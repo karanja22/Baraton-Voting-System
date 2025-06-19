@@ -64,6 +64,13 @@ export class Student {
     @Column({ nullable: true })
     department_id: number;
 
+    @Column('float', { nullable: true })
+    gpa: number;
+
+    @Column('int', { nullable: true })
+    credit_hours: number;
+
+
     @Column({ nullable: true })
     residence: string;
 

@@ -7,7 +7,7 @@ import { Repository } from 'typeorm';
 import { Student } from 'src/users/entities/student.entity';
 import { JwtService } from '@nestjs/jwt';
 import { RedisService } from './redis.service';
-import { HttpResponse } from 'src/shared/interfaces/http-response.interface';
+import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
 import { LoginDto } from './dtos/login.dto';
 
 @Injectable()
@@ -22,7 +22,7 @@ export class AuthService {
         private studentRepository: Repository<Student>,
     ) { }
 
-    async register(registerDto: RegisterDto): Promise<HttpResponse<null>> {
+    async register(registerDto: RegisterDto): Promise<HttpResponseInterface<null>> {
         const { email, student_id, password } = registerDto;
 
         const student = await this.studentRepository.findOne({ where: { student_id: Number(student_id) } });
@@ -53,7 +53,7 @@ export class AuthService {
         };
     }
 
-    async login(loginDto: LoginDto): Promise<HttpResponse<{ access_token: string; refresh_token: string }>> {
+    async login(loginDto: LoginDto): Promise<HttpResponseInterface<{ access_token: string; refresh_token: string }>> {
         const { student_id, password } = loginDto;
 
         const user = await this.userRepository.findOne({ where: { student_id } });
@@ -104,7 +104,7 @@ export class AuthService {
     async refreshTokens(
         student_id: string,
         refreshToken: string,
-    ): Promise<HttpResponse<{ access_token: string; refresh_token: string }>> {
+    ): Promise<HttpResponseInterface<{ access_token: string; refresh_token: string }>> {
         const stored = await this.redisService.getRefreshToken(student_id);
         if (!stored || stored !== refreshToken) {
             throw new UnauthorizedException('Invalid refresh token');
@@ -124,7 +124,7 @@ export class AuthService {
         };
     }
 
-    async logout(student_id: string): Promise<HttpResponse<null>> {
+    async logout(student_id: string): Promise<HttpResponseInterface<null>> {
         await this.redisService.deleteRefreshToken(student_id);
         return {
             statusCode: 200,

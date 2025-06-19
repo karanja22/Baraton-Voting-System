@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from './entities/student.entity';
-import { HttpResponse } from 'src/shared/interfaces/http-response.interface';
+import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
 import { CreateStudentDto } from './dtos/create-student.dto';
 import { UpdateStudentDto } from './dtos/update-student.dto';
 
@@ -13,7 +13,7 @@ export class UsersService {
         private readonly studentRepo: Repository<Student>,
     ) { }
 
-    async createStudent(dto: CreateStudentDto): Promise<HttpResponse<Student>> {
+    async createStudent(dto: CreateStudentDto): Promise<HttpResponseInterface<Student>> {
         const student = this.studentRepo.create(dto);
         await this.studentRepo.save(student);
         return {
@@ -23,7 +23,7 @@ export class UsersService {
         };
     }
 
-    async getAllStudents(): Promise<HttpResponse<Student[]>> {
+    async getAllStudents(): Promise<HttpResponseInterface<Student[]>> {
         const students = await this.studentRepo.find();
         return {
             statusCode: 200,
@@ -32,7 +32,7 @@ export class UsersService {
         };
     }
 
-    async getStudentById(id: number): Promise<HttpResponse<Student>> {
+    async getStudentById(id: number): Promise<HttpResponseInterface<Student>> {
         const student = await this.studentRepo.findOne({ where: { student_id: id } });
         if (!student) throw new NotFoundException('Student not found');
 
@@ -43,7 +43,7 @@ export class UsersService {
         };
     }
 
-    async updateStudent(id: number, dto: UpdateStudentDto): Promise<HttpResponse<Student>> {
+    async updateStudent(id: number, dto: UpdateStudentDto): Promise<HttpResponseInterface<Student>> {
         const student = await this.studentRepo.findOne({ where: { student_id: id } });
         if (!student) throw new NotFoundException('Student not found');
 
@@ -57,7 +57,7 @@ export class UsersService {
         };
     }
 
-    async deleteStudent(id: number): Promise<HttpResponse<null>> {
+    async deleteStudent(id: number): Promise<HttpResponseInterface<null>> {
         const result = await this.studentRepo.delete({ student_id: id });
         if (!result.affected) throw new NotFoundException('Student not found');
 

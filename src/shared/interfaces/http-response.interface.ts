@@ -1,4 +1,4 @@
-export interface HttpResponse<T> {
+export interface HttpResponseInterface<T> {
     statusCode: number;
     message: string;
     data?: T;
