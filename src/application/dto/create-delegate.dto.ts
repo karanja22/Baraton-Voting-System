@@ -10,5 +10,4 @@ export class CreateDelegateDto {
   year_of_study: number;
   major: string;
   credit_hours: number;
-
 }

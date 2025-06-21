@@ -14,6 +14,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
             tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
         });
 
+
         this.client.on('connect', () => console.log('Connected to Redis Cloud'));
         this.client.on('error', (err) => console.error('Redis error:', err));
     }

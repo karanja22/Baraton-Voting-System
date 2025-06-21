@@ -17,7 +17,7 @@ const AppDataSource = new DataSource({
 async function seed() {
     try {
         await AppDataSource.initialize();
-        console.log('📦 DataSource initialized.');
+        console.log(' DataSource initialized.');
 
         const studentRepo = AppDataSource.getRepository(Student);
 
