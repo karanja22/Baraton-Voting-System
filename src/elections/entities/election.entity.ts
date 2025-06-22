@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Position } from 'src/shared/entities/position.entity'; 
+import { Position } from 'src/shared/entities/position.entity';
 
 @Entity()
 export class Election {
@@ -25,8 +25,8 @@ export class Election {
   @Column({ default: 'pending' })
   status: string;
 
- @OneToMany(() => Position, position => position.election, { cascade: true })
-positions: Position[];
+  @OneToMany(() => Position, position => position.election)
+  positions: Position[];
 
   @CreateDateColumn()
   created_at: Date;

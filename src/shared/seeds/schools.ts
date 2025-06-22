@@ -51,22 +51,32 @@ export const seedAcademicHierarchy = async (dataSource: DataSource) => {
     ];
 
     for (const schoolData of hierarchy) {
-        const school = schoolRepo.create({ name: schoolData.name });
-        await schoolRepo.save(school);
+        let school = await schoolRepo.findOne({ where: { name: schoolData.name } });
+        if (!school) {
+            school = schoolRepo.create({ name: schoolData.name });
+            await schoolRepo.save(school);
+        }
 
         for (const deptData of schoolData.departments) {
-            const department = deptRepo.create({
-                name: deptData.name,
-                school,
+            let department = await deptRepo.findOne({
+                where: { name: deptData.name, school: { id: school.id } },
+                relations: ['school'],
             });
-            await deptRepo.save(department);
+            if (!department) {
+                department = deptRepo.create({ name: deptData.name, school });
+                await deptRepo.save(department);
+            }
 
             for (const progName of deptData.programs) {
-                const program = programRepo.create({
-                    name: progName,
-                    department,
+                const existing = await programRepo.findOne({
+                    where: { name: progName, department: { id: department.id } },
+                    relations: ['department'],
                 });
-                await programRepo.save(program);
+
+                if (!existing) {
+                    const program = programRepo.create({ name: progName, department });
+                    await programRepo.save(program);
+                }
             }
         }
     }

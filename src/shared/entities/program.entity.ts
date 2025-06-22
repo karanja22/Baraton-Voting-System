@@ -9,6 +9,6 @@ export class Program {
     @Column()
     name: string;
 
-    @ManyToOne(() => Department, department => department.programs, { onDelete: 'CASCADE' })
+    @ManyToOne(() => Department, department => department.progams, { onDelete: 'CASCADE' })
     department: Department;
 }

@@ -2,20 +2,42 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
 import { Repository } from 'typeorm';
-import { CreateElectionDto, UpdateElectionDto } from './dtos/create-election.dto';
-import { UpdateElectionDto } from './dtos/update-election.dto';
+import { CreateElectionDto } from './dtos/create-election.dto';
 import { Election } from './entities/election.entity';
+import { UpdateElectionDto } from './dtos/update-election.dto';
+import { Position } from 'src/shared/entities/position.entity';
 
 @Injectable()
 export class ElectionsService {
   constructor(
     @InjectRepository(Election)
     private readonly electionRepo: Repository<Election>,
-  ) {}
+
+    @InjectRepository(Position)
+    private readonly positionRepo: Repository<Position>,
+  ) { }
 
   async createElection(dto: CreateElectionDto): Promise<HttpResponseInterface<Election>> {
-    const election = this.electionRepo.create(dto);
+    // 1. Create and save the election
+    const election = this.electionRepo.create({
+      title: dto.title,
+      start_date: dto.start_date,
+      end_date: dto.end_date,
+    });
     await this.electionRepo.save(election);
+
+    // 2. Handle associated positions (if provided)
+    if (dto.positions?.length) {
+      const positions = dto.positions.map((pos) =>
+        this.positionRepo.create({
+          name: pos.name,
+          isVicePosition: pos.isVicePosition || false,
+          election,
+        })
+      );
+      await this.positionRepo.save(positions);
+    }
+
     return {
       statusCode: 201,
       message: 'Election created successfully',
@@ -24,13 +46,33 @@ export class ElectionsService {
   }
 
   async findAll(): Promise<HttpResponseInterface<Election[]>> {
-    const elections = await this.electionRepo.find();
+    const elections = await this.electionRepo.find({
+      relations: ['positions'],
+    });
     return {
       statusCode: 200,
       message: 'All elections fetched',
       data: elections,
     };
   }
+
+  async findOne(id: number): Promise<HttpResponseInterface<Election>> {
+  const election = await this.electionRepo.findOne({
+    where: { id },
+    relations: ['positions'],
+  });
+
+  if (!election) {
+    throw new NotFoundException('Election not found');
+  }
+
+  return {
+    statusCode: 200,
+    message: 'Election fetched successfully',
+    data: election,
+  };
+}
+
 
   async updateElection(id: number, dto: UpdateElectionDto): Promise<HttpResponseInterface<Election>> {
     const election = await this.electionRepo.findOne({ where: { id } });

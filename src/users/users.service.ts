@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from './entities/student.entity';
@@ -7,8 +7,8 @@ import { UpdateStudentDto } from './dtos/update-student.dto';
 import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
 import { Program } from 'src/shared/entities/program.entity';
 import { Department } from 'src/shared/entities/department.entity';
-import { School } from 'src/shared/entities/school.entity';
 import { Residence } from 'src/shared/entities/residence.entity';
+import { School } from 'src/shared/entities/school.entity';
 
 @Injectable()
 export class UsersService {
@@ -23,7 +23,7 @@ export class UsersService {
     private readonly schoolRepo: Repository<School>,
     @InjectRepository(Residence)
     private readonly residenceRepo: Repository<Residence>,
-  ) {}
+  ) { }
 
   async createStudent(dto: CreateStudentDto): Promise<HttpResponseInterface<Student>> {
     const program = await this.programRepo.findOne({ where: { id: dto.program_id } });
@@ -85,6 +85,20 @@ export class UsersService {
     const student = await this.studentRepo.findOne({ where: { student_id: id } });
     if (!student) throw new NotFoundException('Student not found');
 
+    if (dto.email && dto.email !== student.email) {
+      const emailTaken = await this.studentRepo.findOne({ where: { email: dto.email } });
+      if (emailTaken) {
+        throw new BadRequestException('Email is already in use');
+      }
+    }
+
+    if (dto.student_id && dto.student_id !== id) {
+      const idTaken = await this.studentRepo.findOne({ where: { student_id: dto.student_id } });
+      if (idTaken) {
+        throw new BadRequestException('Student ID already exists');
+      }
+    }
+
     if (dto.program_id) {
       const program = await this.programRepo.findOne({ where: { id: dto.program_id } });
       if (program) student.program = program;
@@ -106,7 +120,9 @@ export class UsersService {
         : null;
     }
 
-    Object.assign(student, dto);
+    const { program_id, department_id, school_id, residence_id, ...safeFields } = dto;
+    Object.assign(student, safeFields);
+
     await this.studentRepo.save(student);
 
     return {
@@ -115,6 +131,7 @@ export class UsersService {
       data: student,
     };
   }
+
 
   async deleteStudent(id: number): Promise<HttpResponseInterface<null>> {
     const result = await this.studentRepo.delete({ student_id: id });

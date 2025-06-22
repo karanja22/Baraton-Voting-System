@@ -1,20 +1,26 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { User } from './entities/register-user.entity';
-import { RegisterDto } from './dtos/register.dto';
+import {
+    BadRequestException,
+    Injectable,
+    UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Student } from 'src/users/entities/student.entity';
 import { JwtService } from '@nestjs/jwt';
+
+import { User } from './entities/register-user.entity';
+import { Student } from 'src/users/entities/student.entity';
 import { RedisService } from './redis.service';
-import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
+import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
+import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
 
 @Injectable()
 export class AuthService {
     constructor(
         private jwtService: JwtService,
         private redisService: RedisService,
+
         @InjectRepository(User)
         private userRepository: Repository<User>,
 
@@ -25,7 +31,10 @@ export class AuthService {
     async register(registerDto: RegisterDto): Promise<HttpResponseInterface<null>> {
         const { email, student_id, password } = registerDto;
 
-        const student = await this.studentRepository.findOne({ where: { student_id: Number(student_id) } });
+        const student = await this.studentRepository.findOne({
+            where: { student_id: Number(student_id) },
+        });
+
         if (!student) {
             throw new BadRequestException('Student ID not found in records.');
         }
@@ -33,12 +42,12 @@ export class AuthService {
         const existing = await this.userRepository.findOne({
             where: [{ student_id }, { email }],
         });
+
         if (existing) {
             throw new BadRequestException('User already registered.');
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-
         const newUser = this.userRepository.create({
             email,
             student_id,
@@ -53,18 +62,16 @@ export class AuthService {
         };
     }
 
-    async login(loginDto: LoginDto): Promise<HttpResponseInterface<{ access_token: string; refresh_token: string }>> {
+    async login(
+        loginDto: LoginDto,
+    ): Promise<HttpResponseInterface<{ access_token: string; refresh_token: string; student_id: string }>> {
         const { student_id, password } = loginDto;
 
         const user = await this.userRepository.findOne({ where: { student_id } });
-        if (!user) {
-            throw new UnauthorizedException('Invalid credentials');
-        }
+        if (!user) throw new UnauthorizedException('Invalid credentials');
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            throw new UnauthorizedException('Invalid credentials');
-        }
+        if (!isMatch) throw new UnauthorizedException('Invalid credentials');
 
         const tokens = await this.generateTokens(user.id, student_id);
         await this.redisService.setRefreshToken(student_id, tokens.refresh_token);
@@ -72,7 +79,10 @@ export class AuthService {
         return {
             statusCode: 200,
             message: 'Login successful',
-            data: tokens,
+            data: {
+                ...tokens,
+                student_id,
+            },
         };
     }
 
@@ -95,24 +105,33 @@ export class AuthService {
             expiresIn: '7d',
         });
 
-        return {
-            access_token,
-            refresh_token,
-        };
+        return { access_token, refresh_token };
     }
 
-    async refreshTokens(
-        student_id: string,
+    async refreshToken(
+        accessToken: string,
         refreshToken: string,
     ): Promise<HttpResponseInterface<{ access_token: string; refresh_token: string }>> {
-        const stored = await this.redisService.getRefreshToken(student_id);
-        if (!stored || stored !== refreshToken) {
-            throw new UnauthorizedException('Invalid refresh token');
+        let decoded: any;
+
+        try {
+            decoded = this.jwtService.verify(accessToken, {
+                secret: process.env.JWT_ACCESS_SECRET || 'ACCESS_SECRET_KEY',
+                ignoreExpiration: true,
+            });
+        } catch (err) {
+            throw new UnauthorizedException('Invalid access token');
         }
 
+        const student_id = decoded.student_id;
+        const stored = await this.redisService.getRefreshToken(student_id);
+
+        if (!stored || stored !== refreshToken) {
+            throw new UnauthorizedException('Invalid or missing refresh token');
+        }
 
         const user = await this.userRepository.findOne({ where: { student_id } });
-        if (!user) throw new UnauthorizedException();
+        if (!user) throw new UnauthorizedException('User not found');
 
         const tokens = await this.generateTokens(user.id, student_id);
         await this.redisService.setRefreshToken(student_id, tokens.refresh_token);
@@ -124,8 +143,19 @@ export class AuthService {
         };
     }
 
-    async logout(student_id: string): Promise<HttpResponseInterface<null>> {
-        await this.redisService.deleteRefreshToken(student_id);
+    async logout(accessToken: string): Promise<HttpResponseInterface<null>> {
+        let decoded: any;
+
+        try {
+            decoded = this.jwtService.verify(accessToken, {
+                secret: process.env.JWT_ACCESS_SECRET || 'ACCESS_SECRET_KEY',
+            });
+        } catch (err) {
+            throw new UnauthorizedException('Invalid access token');
+        }
+
+        await this.redisService.deleteRefreshToken(decoded.student_id);
+
         return {
             statusCode: 200,
             message: 'Logged out successfully',

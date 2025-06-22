@@ -5,6 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   CreateDateColumn,
+  PrimaryColumn,
 } from 'typeorm';
 import { Program } from 'src/shared/entities/program.entity';
 import { Residence } from 'src/shared/entities/residence.entity';
@@ -72,7 +73,7 @@ export class Student {
   credit_hours: number;
 
   @ManyToOne(() => Residence)
-  residence: Residence;
+  residence: Residence | null;
 
   @Column({ default: false })
   isOnWorkProgram: boolean;

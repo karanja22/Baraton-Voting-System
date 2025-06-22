@@ -1,7 +1,7 @@
 // src/seed/student.data.ts
 
-import { Student } from '../users/entities/student.entity';
 import { Residence } from '../shared/entities/residence.entity';
+import { Student } from '../users/entities/student.entity';
 
 export const sampleStudents: Partial<Student>[] = [
   {
@@ -22,9 +22,9 @@ export const sampleStudents: Partial<Student>[] = [
     isOnWorkProgram: false,
     gpa: 3.2,
     credit_hours: 65,
-    school: { id: 1 } as any,
-    department: { id: 10 } as any,
-    program: { id: 1 } as any,
+    school: { id: 5 } as any, // School of Science and Technology
+    department: { id: 11 } as any, // Information Systems and Computing
+    program: { id: 21 } as any, // BSc in Computer Science
     residence: { id: 1 } as Residence, // Men's Dorm
   },
   {
@@ -45,9 +45,9 @@ export const sampleStudents: Partial<Student>[] = [
     isOnWorkProgram: true,
     gpa: 3.5,
     credit_hours: 85,
-    school: { id: 2 } as any,
-    department: { id: 11 } as any,
-    program: { id: 2 } as any,
+    school: { id: 1 } as any, // School of Business
+    department: { id: 2 } as any, // Management
+    program: { id: 3 } as any, // BBA in Management
     residence: { id: 2 } as Residence, // Ladies' Dorm
   },
   {
@@ -68,9 +68,9 @@ export const sampleStudents: Partial<Student>[] = [
     isOnWorkProgram: false,
     gpa: 2.8,
     credit_hours: 48,
-    school: { id: 3 } as any,
-    department: { id: 12 } as any,
-    program: { id: 3 } as any,
+    school: { id: 3 } as any, // School of Health Sciences
+    department: { id: 6 } as any, // Medical Laboratory Science
+    program: { id: 11 } as any, // BSc in Lab Technology
     residence: { id: 3 } as Residence, // Off Campus Male
   },
   {
@@ -91,9 +91,9 @@ export const sampleStudents: Partial<Student>[] = [
     isOnWorkProgram: true,
     gpa: 3.0,
     credit_hours: 102,
-    school: { id: 4 } as any,
-    department: { id: 13 } as any,
-    program: { id: 4 } as any,
+    school: { id: 2 } as any, // School of Education, Humanities and Social Sciences
+    department: { id: 3 } as any, // Education
+    program: { id: 5 } as any, // BEd in Arts
     residence: { id: 4 } as Residence, // Off Campus Female
   },
   {
@@ -114,9 +114,9 @@ export const sampleStudents: Partial<Student>[] = [
     isOnWorkProgram: true,
     gpa: 3.1,
     credit_hours: 67,
-    school: { id: 5 } as any,
-    department: { id: 14 } as any,
-    program: { id: 5 } as any,
-    residence: { id: 3 } as Residence, 
+    school: { id: 4 } as any, // School of Nursing
+    department: { id: 8 } as any, // Nursing
+    program: { id: 15 } as any, // BSc in Nursing
+    residence: { id: 3 } as Residence, // Off Campus Male
   },
 ];

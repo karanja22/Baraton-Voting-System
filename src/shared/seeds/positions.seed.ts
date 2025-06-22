@@ -1,34 +1,53 @@
+// src/seed/seed-elections-and-positions.ts
 import { DataSource } from 'typeorm';
-import { Position } from 'src/shared/entities/position.entity';
 import { Election } from 'src/elections/entities/election.entity';
+import { Position } from 'src/shared/entities/position.entity';
 import { School } from 'src/shared/entities/school.entity';
 
-export const seedPositions = async (dataSource: DataSource) => {
-  const positionRepo = dataSource.getRepository(Position);
+export const seedElectionsAndPositions = async (dataSource: DataSource) => {
   const electionRepo = dataSource.getRepository(Election);
+  const positionRepo = dataSource.getRepository(Position);
   const schoolRepo = dataSource.getRepository(School);
 
-  const generalElection = await electionRepo.findOne({ where: { title: 'General Senate Election' } });
-  const secElection = await electionRepo.findOne({ where: { title: 'SEC Election' } });
+  // Elections
+  const electionsToCreate = [
+    { title: 'General Senate Election', start_date: new Date(), end_date: new Date(), status: 'pending' },
+    { title: 'SEC Election', start_date: new Date(), end_date: new Date(), status: 'pending' },
+  ];
 
-  if (!generalElection || !secElection) {
-    throw new Error('Elections not found. Please seed elections before seeding positions.');
+  const createdElections: Record<string, Election> = {};
+
+  for (const electionData of electionsToCreate) {
+    const existing = await electionRepo.findOne({ where: { title: electionData.title } });
+
+    if (!existing) {
+      const created = electionRepo.create(electionData);
+      await electionRepo.save(created);
+      createdElections[electionData.title] = created;
+      console.log(`✅ Election "${electionData.title}" created.`);
+    } else {
+      createdElections[electionData.title] = existing;
+      console.log(`⚠️ Election "${electionData.title}" already exists.`);
+    }
   }
+
+  const generalElection = createdElections['General Senate Election'];
+  const secElection = createdElections['SEC Election'];
 
   const schools = await schoolRepo.find();
 
-  // Seed school-based senator positions
+  // School-based senators
   for (const school of schools) {
     const schoolName = school.name.replace('School of', '').trim();
-    await positionRepo.save(
-      positionRepo.create({
-        name: `Senator School of ${schoolName}`,
-        election: generalElection,
-      }),
-    );
+    const name = `Senator School of ${schoolName}`;
+
+    const exists = await positionRepo.findOne({ where: { name } });
+    if (!exists) {
+      const position = positionRepo.create({ name, election: generalElection });
+      await positionRepo.save(position);
+    }
   }
 
-  // General Senate Positions
   const generalPositions = [
     'Senator Religious Affairs',
     'Senator Diploma & Certificate Rep',
@@ -40,15 +59,13 @@ export const seedPositions = async (dataSource: DataSource) => {
   ];
 
   for (const name of generalPositions) {
-    await positionRepo.save(
-      positionRepo.create({
-        name,
-        election: generalElection,
-      }),
-    );
+    const exists = await positionRepo.findOne({ where: { name } });
+    if (!exists) {
+      const position = positionRepo.create({ name, election: generalElection });
+      await positionRepo.save(position);
+    }
   }
 
-  // SEC Positions
   const secPositions = [
     { name: 'President', isVicePosition: false },
     { name: 'Secretary General', isVicePosition: false },
@@ -61,14 +78,12 @@ export const seedPositions = async (dataSource: DataSource) => {
   ];
 
   for (const { name, isVicePosition } of secPositions) {
-    await positionRepo.save(
-      positionRepo.create({
-        name,
-        election: secElection,
-        isVicePosition,
-      }),
-    );
+    const exists = await positionRepo.findOne({ where: { name } });
+    if (!exists) {
+      const position = positionRepo.create({ name, election: secElection, isVicePosition });
+      await positionRepo.save(position);
+    }
   }
 
-  console.log('Positions seeded successfully.');
+  console.log('✅ Elections and positions seeded successfully.');
 };

@@ -1,12 +1,12 @@
+import { CandidateApplication } from 'src/application/entities/candidate-application.entity';
+import { Election } from 'src/elections/entities/election.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   OneToMany,
-  CreateDateColumn,
 } from 'typeorm';
-import { Election} from 'src/elections/entities/election.entity.ts';
 
 @Entity()
 export class Position {
@@ -19,9 +19,10 @@ export class Position {
   @ManyToOne(() => Election, election => election.positions, { onDelete: 'CASCADE' })
   election: Election;
 
-  @OneToMany(() => CandidateApplication, candidate => candidate.position)
-  candidates: CandidateApplication[];
+  @OneToMany(() => CandidateApplication, candidate => candidate.position, { cascade: true })
+  candidates?: CandidateApplication[];
+
 
   @Column({ default: false })
-  isVicePosition?: boolean; // Optional flag for special cases
+  isVicePosition?: boolean;
 }

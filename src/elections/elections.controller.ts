@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ElectionsService } from './elections.service';
-import { CreateElectionDto, UpdateElectionDto } from './dtos/create-election.dto';
+import { CreateElectionDto } from './dtos/create-election.dto';
 import { UpdateElectionDto } from './dtos/update-election.dto';
 
 
@@ -16,6 +16,11 @@ export class ElectionsController {
   @Get()
   findAll() {
     return this.electionsService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.electionsService.findOne(+id);
   }
 
   @Patch(':id')
