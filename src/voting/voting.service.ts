@@ -40,13 +40,14 @@ export class VotingService {
 
         const position = candidate.position;
         const election = position.election;
+
         if (position.id !== dto.position_id || election.id !== dto.election_id) {
             throw new BadRequestException(
-                'Candidate does not belong to that position/election',
+                'Candidate does not belong to the specified position or election',
             );
         }
 
-        const existing = await this.voteRepo.findOne({
+        const existingVote = await this.voteRepo.findOne({
             where: {
                 voter: { student_id: dto.voter_id },
                 position: { id: dto.position_id },
@@ -54,10 +55,19 @@ export class VotingService {
             },
             relations: ['voter', 'position', 'election'],
         });
-        if (existing)
-            throw new BadRequestException('You have already voted for this position');
 
-        const vote = this.voteRepo.create({ voter, candidate, position, election });
+        if (existingVote) {
+            throw new BadRequestException(
+                'You have already voted for this position in this election',
+            );
+        }
+
+        const vote = this.voteRepo.create({
+            voter,
+            candidate,
+            position,
+            election,
+        });
         await this.voteRepo.save(vote);
 
         return {
@@ -67,7 +77,7 @@ export class VotingService {
         };
     }
 
-    /** 2. Has this voter already voted for that position/election? */
+    /** 2. Check if voter has already voted */
     async hasVoted(
         voter_id: number,
         position_id: number,
@@ -76,48 +86,73 @@ export class VotingService {
         const voter = await this.studentRepo.findOne({
             where: { student_id: voter_id },
         });
+        if (!voter) throw new NotFoundException('Voter not found');
+
         const position = await this.posRepo.findOne({ where: { id: position_id } });
+        if (!position) throw new NotFoundException('Position not found');
+
         const election = await this.electRepo.findOne({ where: { id: election_id } });
-        if (!voter || !position || !election)
-            throw new BadRequestException('Invalid parameters');
+        if (!election) throw new NotFoundException('Election not found');
 
         const existing = await this.voteRepo.findOne({
-            where: { voter, position, election },
+            where: {
+                voter: { student_id: voter_id },
+                position: { id: position_id },
+                election: { id: election_id },
+            },
         });
-        return { statusCode: 200, message: 'Check complete', data: { hasVoted: !!existing } };
+
+        return {
+            statusCode: 200,
+            message: 'Vote status retrieved',
+            data: { hasVoted: !!existing },
+        };
     }
 
-    /** 3. List all votes (for admin/debug) */
+    /** 3. Get all votes */
     async findAll(): Promise<HttpResponseInterface<Vote[]>> {
-        const votes = await this.voteRepo.find();
-        return { statusCode: 200, message: 'All votes fetched', data: votes };
+        const votes = await this.voteRepo.find({
+            relations: ['voter', 'candidate', 'position', 'election'],
+        });
+        return {
+            statusCode: 200,
+            message: 'All votes fetched',
+            data: votes,
+        };
     }
 
-    /** 4. Get one vote by ID */
+    /** 4. Get vote by ID */
     async findOne(id: number): Promise<HttpResponseInterface<Vote>> {
-        const vote = await this.voteRepo.findOne({ where: { id } });
+        const vote = await this.voteRepo.findOne({
+            where: { id },
+            relations: ['voter', 'candidate', 'position', 'election'],
+        });
         if (!vote) throw new NotFoundException('Vote not found');
-        return { statusCode: 200, message: 'Vote found', data: vote };
+        return {
+            statusCode: 200,
+            message: 'Vote found',
+            data: vote,
+        };
     }
 
-    /** 5. Get tally for a given position in a given election */
+    /** 5. Get results for a given election & position */
     async getResults(
         electionId: number,
         positionId: number,
-    ): Promise<HttpResponseInterface<Array<{
-        candidateId: number;
-        full_name: string;
-        voteCount: number;
-    }>>> {
+    ): Promise<
+        HttpResponseInterface<
+            Array<{ candidateId: number; full_name: string; voteCount: number }>
+        >
+    > {
         const raw = await this.voteRepo
             .createQueryBuilder('vote')
-            .select('vote.candidateId', 'candidateId')
+            .select('candidate.id', 'candidateId')
             .addSelect('candidate.full_name', 'full_name')
             .addSelect('COUNT(*)', 'voteCount')
             .innerJoin('vote.candidate', 'candidate')
             .where('vote.election = :electionId', { electionId })
             .andWhere('vote.position = :positionId', { positionId })
-            .groupBy('vote.candidateId')
+            .groupBy('candidate.id')
             .addGroupBy('candidate.full_name')
             .orderBy('voteCount', 'DESC')
             .getRawMany();
@@ -125,7 +160,7 @@ export class VotingService {
         return {
             statusCode: 200,
             message: `Results for election ${electionId}, position ${positionId}`,
-            data: raw.map(r => ({
+            data: raw.map((r) => ({
                 candidateId: Number(r.candidateId),
                 full_name: r.full_name,
                 voteCount: Number(r.voteCount),

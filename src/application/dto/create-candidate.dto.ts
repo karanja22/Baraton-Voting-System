@@ -5,8 +5,8 @@ export class CreateCandidateDto extends CreateDelegateDto {
   @IsString()
   residence: string;
 
-  @IsString()
-  position: string;
+  @IsNumber()
+  position_id: number;
 
   @IsString()
   nationality: string;

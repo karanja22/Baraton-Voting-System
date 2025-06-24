@@ -241,7 +241,11 @@ export class ApplicationService {
   }
 
   async reviewCandidate(id: number): Promise<HttpResponseInterface<any>> {
-    const candidate = await this.candidateRepo.findOne({ where: { id } });
+    const candidate = await this.candidateRepo.findOne({
+      where: { id },
+      relations: ['position'],
+    });
+
     if (!candidate) throw new NotFoundException('Candidate application not found');
 
     const {
@@ -252,7 +256,6 @@ export class ApplicationService {
       school,
       department,
       nationality,
-      major,
       has_disciplinary_issue,
     } = candidate;
 
@@ -261,11 +264,13 @@ export class ApplicationService {
     if (has_disciplinary_issue) approved = false;
     if (gpa < 2.5 || credit_hours < 54 || credit_hours > 100) approved = false;
 
-    if (position === 'President' || position === 'Vice President') {
+    const positionName = position?.name?.toLowerCase();
+
+    if (positionName === 'president' || position.isVicePosition) {
       if (credit_hours < 60) approved = false;
     }
 
-    if (position?.includes('Senator Residence')) {
+    if (positionName?.includes('senator residence')) {
       const validResidences = [
         "Men's Dorm",
         "Ladies' Dorm",
@@ -273,11 +278,11 @@ export class ApplicationService {
         'Off Campus Female',
       ];
       approved &&= validResidences.includes(residence);
-    } else if (position?.includes('Senator School of')) {
+    } else if (positionName?.includes('senator school of')) {
       approved &&= Boolean(school);
-    } else if (position === 'Senator Religious Affairs') {
+    } else if (positionName === 'senator religious affairs') {
       approved &&= department?.toLowerCase().includes('theology');
-    } else if (position === 'Senator International Rep') {
+    } else if (positionName === 'senator international rep') {
       approved &&= nationality?.toLowerCase() !== 'kenyan';
     }
 
