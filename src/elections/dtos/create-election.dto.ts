@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ValidateNested, IsArray, IsOptional, IsDateString, IsString } from 'class-validator';
+import { ValidateNested, IsArray, IsOptional, IsDateString, IsString, IsBoolean, ArrayNotEmpty } from 'class-validator';
 
 class CreatePositionInput {
     @IsString()
@@ -20,7 +20,11 @@ export class CreateElectionDto {
     end_date: Date;
 
     @IsOptional()
-    @IsArray()
+    @IsBoolean()
+    has_positions?: boolean;
+
+    @IsOptional()
+    @ArrayNotEmpty()
     @ValidateNested({ each: true })
     @Type(() => CreatePositionInput)
     positions?: CreatePositionInput[];

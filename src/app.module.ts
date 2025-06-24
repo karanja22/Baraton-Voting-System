@@ -7,6 +7,8 @@ import { ApplicationModule } from './application/application.module';
 import { ElectionsModule } from './elections/elections.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { VotingModule } from './voting/voting.module';
+import { ResultsModule } from './results/results.module';
 
 @Module({
   imports: [AuthModule, UsersModule, ApplicationModule, ElectionsModule,
@@ -19,7 +21,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       },
       autoLoadEntities: true,
       synchronize: true,
-    })],
+    }),
+    VotingModule,
+    ResultsModule],
   controllers: [AppController],
   providers: [AppService],
 })
