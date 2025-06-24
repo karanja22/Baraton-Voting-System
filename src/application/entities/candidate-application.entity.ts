@@ -1,15 +1,16 @@
 import { IsNumber, Min } from 'class-validator';
 import { DelegateApplication } from './delegate-application.entity';
-import { Entity, Column, JoinColumn, OneToOne } from 'typeorm';
+import { Entity, Column, JoinColumn, OneToOne, ManyToOne } from 'typeorm';
 import { Student } from 'src/users/entities/student.entity';
+import { Position } from 'src/shared/entities/position.entity';
 
 @Entity('candidate_applications')
 export class CandidateApplication extends DelegateApplication {
     @Column()
     residence: string;
 
-    @Column()
-    position: string;
+    @ManyToOne(() => Position, { eager: true })
+    position: Position
 
     @Column()
     nationality: string;
