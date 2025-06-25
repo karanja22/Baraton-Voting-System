@@ -11,9 +11,16 @@ import { VotingModule } from './voting/voting.module';
 import { ResultsModule } from './results/results.module';
 import { AdminModule } from './admin/admin.module';
 import { DelegateSelectionModule } from './elections/delegate-selection/delegate-selection.module';
+import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [AuthModule, UsersModule, ApplicationModule, ElectionsModule,
+    PassportModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'supersecretkey',
+      signOptions: { expiresIn: '1d' },
+    }),
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
       type: 'postgres',

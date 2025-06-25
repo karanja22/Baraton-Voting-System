@@ -3,7 +3,7 @@ import { IsNotEmpty, IsString, Length } from 'class-validator';
 export class LoginDto {
     @IsNotEmpty()
     @IsString()
-    student_id: string;
+    identifier: string;
 
     @IsNotEmpty()
     @IsString()

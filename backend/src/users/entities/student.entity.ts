@@ -11,6 +11,7 @@ import { Program } from 'src/shared/entities/program.entity';
 import { Residence } from 'src/shared/entities/residence.entity';
 import { School } from 'src/shared/entities/school.entity';
 import { Department } from 'src/shared/entities/department.entity';
+import { Role } from '../roles.enum';
 
 
 @Entity('students')
@@ -53,6 +54,13 @@ export class Student {
 
   @Column({ nullable: true, default: 'Active' })
   status: string;
+
+  @Column({
+    type: 'enum',
+    enum: Role,
+    default: Role.VOTER,
+  })
+  role: Role;
 
   @CreateDateColumn()
   created_at: Date;

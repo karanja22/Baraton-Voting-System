@@ -5,15 +5,15 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
-
-import { User } from './entities/register-user.entity';
-import { Student } from 'src/users/entities/student.entity';
 import { RedisService } from './redis.service';
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
 import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
+import { Student } from 'src/users/entities/student.entity';
+import { Role } from 'src/users/roles.enum';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -29,18 +29,24 @@ export class AuthService {
     ) { }
 
     async register(registerDto: RegisterDto): Promise<HttpResponseInterface<null>> {
-        const { email, student_id, password } = registerDto;
+        const { email, password, identifier, role } = registerDto;
+        const finalRole = role || Role.VOTER;
 
-        const student = await this.studentRepository.findOne({
-            where: { student_id: Number(student_id) },
-        });
+        let student: Student | null = null;
 
-        if (!student) {
-            throw new BadRequestException('Student ID not found in records.');
+        if (finalRole === Role.VOTER) {
+            if (!identifier) throw new BadRequestException('Student ID is required for voters');
+            student = await this.studentRepository.findOne({
+                where: { student_id: Number(identifier) },
+            });
+
+            if (!student) {
+                throw new BadRequestException('Student ID not found in records.');
+            }
         }
 
         const existing = await this.userRepository.findOne({
-            where: [{ student_id }, { email }],
+            where: [{ email }, { identifier }] as any,
         });
 
         if (existing) {
@@ -50,9 +56,10 @@ export class AuthService {
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = this.userRepository.create({
             email,
-            student_id,
             password: hashedPassword,
-        });
+            role: finalRole,
+            identifier,
+        } as DeepPartial<User>);
 
         await this.userRepository.save(newUser);
 
@@ -64,35 +71,49 @@ export class AuthService {
 
     async login(
         loginDto: LoginDto,
-    ): Promise<HttpResponseInterface<{ access_token: string; refresh_token: string; student_id: string }>> {
-        const { student_id, password } = loginDto;
+    ): Promise<HttpResponseInterface<{ access_token: string; refresh_token: string; identifier: string }>> {
+        const { identifier, password } = loginDto;
 
-        const user = await this.userRepository.findOne({ where: { student_id } });
+        const user = await this.userRepository.findOne({ where: { identifier } });
         if (!user) throw new UnauthorizedException('Invalid credentials');
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) throw new UnauthorizedException('Invalid credentials');
 
-        const tokens = await this.generateTokens(user.id, student_id);
-        await this.redisService.setRefreshToken(student_id, tokens.refresh_token);
+        let student: Student | null = null;
+
+        if (user.role === Role.VOTER) {
+            student = await this.studentRepository.findOne({
+                where: { student_id: Number(user.identifier) },
+                relations: ['department'],
+            });
+
+            if (!student) throw new UnauthorizedException('Student record not found');
+        }
+
+        const tokens = await this.generateTokens(user, student);
+        await this.redisService.setRefreshToken(user.identifier, tokens.refresh_token);
 
         return {
             statusCode: 200,
             message: 'Login successful',
             data: {
                 ...tokens,
-                student_id,
+                identifier: user.identifier,
             },
         };
     }
 
-    async generateTokens(userId: number, student_id: string): Promise<{
-        access_token: string;
-        refresh_token: string;
-    }> {
+    async generateTokens(
+        user: User,
+        student?: Student | null,
+    ): Promise<{ access_token: string; refresh_token: string }> {
         const payload = {
-            sub: userId,
-            student_id,
+            sub: user.id,
+            email: user.email,
+            identifier: user.identifier,
+            role: user.role,
+            departmentId: student?.department?.id ?? null,
         };
 
         const access_token = await this.jwtService.signAsync(payload, {
@@ -119,22 +140,31 @@ export class AuthService {
                 secret: process.env.JWT_ACCESS_SECRET || 'ACCESS_SECRET_KEY',
                 ignoreExpiration: true,
             });
-        } catch (err) {
+        } catch {
             throw new UnauthorizedException('Invalid access token');
         }
 
-        const student_id = decoded.student_id;
-        const stored = await this.redisService.getRefreshToken(student_id);
+        const identifier = decoded.identifier;
+        const stored = await this.redisService.getRefreshToken(identifier);
 
         if (!stored || stored !== refreshToken) {
             throw new UnauthorizedException('Invalid or missing refresh token');
         }
 
-        const user = await this.userRepository.findOne({ where: { student_id } });
+        const user = await this.userRepository.findOne({ where: { identifier } });
         if (!user) throw new UnauthorizedException('User not found');
 
-        const tokens = await this.generateTokens(user.id, student_id);
-        await this.redisService.setRefreshToken(student_id, tokens.refresh_token);
+        let student: Student | null = null;
+
+        if (user.role === Role.VOTER) {
+            student = await this.studentRepository.findOne({
+                where: { student_id: Number(user.identifier) },
+                relations: ['department'],
+            });
+        }
+
+        const tokens = await this.generateTokens(user, student);
+        await this.redisService.setRefreshToken(identifier, tokens.refresh_token);
 
         return {
             statusCode: 200,
@@ -150,11 +180,12 @@ export class AuthService {
             decoded = this.jwtService.verify(accessToken, {
                 secret: process.env.JWT_ACCESS_SECRET || 'ACCESS_SECRET_KEY',
             });
-        } catch (err) {
+        } catch {
             throw new UnauthorizedException('Invalid access token');
         }
 
-        await this.redisService.deleteRefreshToken(decoded.student_id);
+        const identifier = decoded.identifier;
+        await this.redisService.deleteRefreshToken(identifier);
 
         return {
             statusCode: 200,
