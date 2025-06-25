@@ -31,7 +31,7 @@ export class DelegateSelectionService {
             .innerJoin('delegate.student', 'student')
             .where('student.departmentId = :id', { id: departmentId })
             .groupBy('delegate.id')
-            .orderBy('voteCount', 'DESC')
+            .orderBy('COUNT(*)', 'DESC')
             .limit(limit)
             .getRawMany();
 

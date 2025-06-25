@@ -10,7 +10,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { VotingModule } from './voting/voting.module';
 import { ResultsModule } from './results/results.module';
 import { AdminModule } from './admin/admin.module';
-import { DelegateSelectionModule } from './delegate-selection/delegate-selection.module';
+import { DelegateSelectionModule } from './elections/delegate-selection/delegate-selection.module';
 
 @Module({
   imports: [AuthModule, UsersModule, ApplicationModule, ElectionsModule,
