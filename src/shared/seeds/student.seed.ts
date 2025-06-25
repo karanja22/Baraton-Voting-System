@@ -7,14 +7,23 @@ import { sampleStudents } from 'src/seed/student.data';
 export const seedStudents = async (dataSource: DataSource) => {
     const studentRepo = dataSource.getRepository(Student);
 
-    const existing = await studentRepo.find();
-    if (existing.length) {
-        console.log('⚠️  Students already exist. Skipping student seed.');
-        return;
+    let newCount = 0;
+
+    for (const sample of sampleStudents) {
+        const existing = await studentRepo.findOne({
+            where: { student_id: sample.student_id },
+        });
+
+        if (!existing) {
+            const student = studentRepo.create(sample);
+            await studentRepo.save(student);
+            newCount++;
+        }
     }
 
-    const students = studentRepo.create(sampleStudents);
-    await studentRepo.save(students);
-
-    console.log(`✅ Seeded ${students.length} students.`);
+    if (newCount > 0) {
+        console.log(`Seeded ${newCount} new students.`);
+    } else {
+        console.log('No new students added. All student IDs already exist.');
+    }
 };

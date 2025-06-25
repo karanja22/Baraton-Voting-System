@@ -9,7 +9,7 @@ export const seedElectionsAndPositions = async (dataSource: DataSource) => {
   const positionRepo = dataSource.getRepository(Position);
   const schoolRepo = dataSource.getRepository(School);
 
-  // Elections
+  // === Create Elections ===
   const electionsToCreate = [
     { title: 'General Senate Election', start_date: new Date(), end_date: new Date(), status: 'pending' },
     { title: 'SEC Election', start_date: new Date(), end_date: new Date(), status: 'pending' },
@@ -18,17 +18,17 @@ export const seedElectionsAndPositions = async (dataSource: DataSource) => {
   const createdElections: Record<string, Election> = {};
 
   for (const electionData of electionsToCreate) {
-    const existing = await electionRepo.findOne({ where: { title: electionData.title } });
+    let existing = await electionRepo.findOne({ where: { title: electionData.title } });
 
     if (!existing) {
-      const created = electionRepo.create(electionData);
-      await electionRepo.save(created);
-      createdElections[electionData.title] = created;
+      existing = electionRepo.create(electionData);
+      await electionRepo.save(existing);
       console.log(`✅ Election "${electionData.title}" created.`);
     } else {
-      createdElections[electionData.title] = existing;
       console.log(`⚠️ Election "${electionData.title}" already exists.`);
     }
+
+    createdElections[electionData.title] = existing;
   }
 
   const generalElection = createdElections['General Senate Election'];
@@ -36,18 +36,26 @@ export const seedElectionsAndPositions = async (dataSource: DataSource) => {
 
   const schools = await schoolRepo.find();
 
-  // School-based senators
+  // === School-based senator positions (linked to school) ===
   for (const school of schools) {
     const schoolName = school.name.replace('School of', '').trim();
     const name = `Senator School of ${schoolName}`;
 
     const exists = await positionRepo.findOne({ where: { name } });
     if (!exists) {
-      const position = positionRepo.create({ name, election: generalElection });
+      const position = positionRepo.create({
+        name,
+        election: generalElection,
+        school, // <- Link school to the position
+      });
       await positionRepo.save(position);
+      console.log(`✅ Position "${name}" created for ${school.name}.`);
+    } else {
+      console.log(`⚠️ Position "${name}" already exists.`);
     }
   }
 
+  // === General non-school-specific senator positions ===
   const generalPositions = [
     'Senator Religious Affairs',
     'Senator Diploma & Certificate Rep',
@@ -63,9 +71,13 @@ export const seedElectionsAndPositions = async (dataSource: DataSource) => {
     if (!exists) {
       const position = positionRepo.create({ name, election: generalElection });
       await positionRepo.save(position);
+      console.log(`✅ General position "${name}" created.`);
+    } else {
+      console.log(`⚠️ General position "${name}" already exists.`);
     }
   }
 
+  // === SEC Executive positions ===
   const secPositions = [
     { name: 'President', isVicePosition: false },
     { name: 'Secretary General', isVicePosition: false },
@@ -82,8 +94,11 @@ export const seedElectionsAndPositions = async (dataSource: DataSource) => {
     if (!exists) {
       const position = positionRepo.create({ name, election: secElection, isVicePosition });
       await positionRepo.save(position);
+      console.log(`SEC position "${name}" created.`);
+    } else {
+      console.log(`SEC position "${name}" already exists.`);
     }
   }
 
-  console.log('✅ Elections and positions seeded successfully.');
+  console.log('Elections and positions seeded successfully.');
 };

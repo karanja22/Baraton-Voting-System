@@ -7,7 +7,6 @@ import {
   Post,
   Get,
   Delete,
-  Put,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -57,6 +56,7 @@ export class ApplicationController {
 
   // === UPDATE ===
   @Patch('delegate/:id')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
   updateDelegate(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDelegateDto,
@@ -65,21 +65,12 @@ export class ApplicationController {
   }
 
   @Patch('candidate/:id')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
   updateCandidate(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCandidateDto,
   ) {
     return this.applicationService.updateCandidate(id, dto);
-  }
-
-  @Patch('review/delegate/:id')
-  reviewDelegate(@Param('id', ParseIntPipe) id: number) {
-    return this.applicationService.reviewDelegate(id);
-  }
-
-  @Patch('review/candidate/:id')
-  reviewCandidate(@Param('id', ParseIntPipe) id: number) {
-    return this.applicationService.reviewCandidate(id);
   }
 
   // === DELETE ===

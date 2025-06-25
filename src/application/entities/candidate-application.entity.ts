@@ -3,11 +3,16 @@ import { DelegateApplication } from './delegate-application.entity';
 import { Entity, Column, JoinColumn, OneToOne, ManyToOne } from 'typeorm';
 import { Student } from 'src/users/entities/student.entity';
 import { Position } from 'src/shared/entities/position.entity';
+import { Election } from 'src/elections/entities/election.entity';
+import { Residence } from 'src/shared/entities/residence.entity';
 
 @Entity('candidate_applications')
 export class CandidateApplication extends DelegateApplication {
-    @Column()
-    residence: string;
+    @ManyToOne(() => Residence, { eager: true })
+    residence: Residence;
+
+    @ManyToOne(() => Election, { eager: true })
+    election: Election;
 
     @ManyToOne(() => Position, { eager: true })
     position: Position

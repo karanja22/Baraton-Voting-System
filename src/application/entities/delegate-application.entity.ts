@@ -1,5 +1,16 @@
 import { IsNumber, Min } from 'class-validator';
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Department } from 'src/shared/entities/department.entity';
+import { Program } from 'src/shared/entities/program.entity';
+import { School } from 'src/shared/entities/school.entity';
+import { Student } from 'src/users/entities/student.entity';
+import {
+    Entity,
+    Column,
+    PrimaryGeneratedColumn,
+    CreateDateColumn,
+    ManyToOne,
+} from 'typeorm';
+
 
 @Entity('delegate_applications')
 export class DelegateApplication {
@@ -9,19 +20,19 @@ export class DelegateApplication {
     @Column()
     full_name: string;
 
-    @Column()
-    student_id: number;
+    @ManyToOne(() => Student, { eager: true })
+    student: Student;
 
     @Column()
     email: string;
 
-    @Column()
-    school: string;
+    @ManyToOne(() => School, { eager: true, nullable: true })
+    school: School;
 
-    @Column()
-    department: string;
+    @ManyToOne(() => Department, { eager: true, nullable: true })
+    department: Department;
 
-    @Column()
+    @Column({ nullable: true })
     tribe: string;
 
     @Column()
@@ -33,20 +44,25 @@ export class DelegateApplication {
     @Column()
     year_of_study: number;
 
-    @Column()
-    major: string;
+    @ManyToOne(() => Program, { eager: true, nullable: true })
+    program: Program;
 
     @CreateDateColumn()
     created_at: Date;
-
 
     @Column({ default: 'pending' })
     status: 'approved' | 'rejected' | 'pending';
 
     @IsNumber()
     @Min(0)
+    @Column({ default: 0 })
     credit_hours: number;
 
     @Column({ default: false })
     has_disciplinary_issue: boolean;
+
+    @Column({ default: false })
+    isSelected: boolean;
+
+
 }

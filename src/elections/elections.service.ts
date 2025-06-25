@@ -31,6 +31,7 @@ export class ElectionsService {
     // create base election
     const election = this.electionRepo.create({
       title: dto.title,
+      type: dto.type,
       start_date: new Date(dto.start_date),
       end_date: new Date(dto.end_date),
       has_positions: dto.has_positions !== false,
@@ -112,6 +113,7 @@ export class ElectionsService {
     // merge primitive fields
     const merged = this.electionRepo.merge(election, {
       title: dto.title,
+      type: dto.type,
       start_date: dto.start_date ? new Date(dto.start_date) : undefined,
       end_date: dto.end_date ? new Date(dto.end_date) : undefined,
       has_positions: dto.has_positions,

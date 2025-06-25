@@ -36,6 +36,17 @@ export class UsersService {
     if (!program || !department || !school) {
       throw new NotFoundException('One or more related entities (program, department, school) not found');
     }
+    const maleResidences = ["Men's Dorm", 'Off Campus Male'];
+    const femaleResidences = ['Ladies\' Dorm', 'Off Campus Female'];
+    const gender = dto.gender?.toLowerCase();
+
+    if (residence && gender === 'male' && femaleResidences.includes(residence.name)) {
+      throw new BadRequestException('Male students cannot be assigned to female residences');
+    }
+
+    if (residence && gender === 'female' && maleResidences.includes(residence.name)) {
+      throw new BadRequestException('Female students cannot be assigned to male residences');
+    }
 
     const student = this.studentRepo.create({
       ...dto,

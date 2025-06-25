@@ -13,6 +13,10 @@ import { Election } from 'src/elections/entities/election.entity';
 import { CreateVoteDto } from './dtos/create-vote.dto';
 import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
 import { Vote } from './entities/voing.entity';
+import { ElectionResultsInterface } from './interfaces/results.interface';
+import { CreateDelegateVoteDto } from './dtos/create-delegate-vote.dto';
+import { DelegateVote } from './entities/delegate-voting.entity';
+import { DelegateApplication } from 'src/application/entities/delegate-application.entity';
 
 @Injectable()
 export class VotingService {
@@ -23,9 +27,14 @@ export class VotingService {
         private candRepo: Repository<CandidateApplication>,
         @InjectRepository(Position) private posRepo: Repository<Position>,
         @InjectRepository(Election) private electRepo: Repository<Election>,
+        @InjectRepository(DelegateVote)
+        private readonly delegateVoteRepo: Repository<DelegateVote>,
+        @InjectRepository(DelegateApplication)
+        private readonly delegateRepo: Repository<DelegateApplication>
+
     ) { }
 
-    /** 1. Cast a vote */
+    /** Vote for candidate */
     async castVote(dto: CreateVoteDto): Promise<HttpResponseInterface<Vote>> {
         const voter = await this.studentRepo.findOne({
             where: { student_id: dto.voter_id },
@@ -34,45 +43,200 @@ export class VotingService {
 
         const candidate = await this.candRepo.findOne({
             where: { id: dto.candidate_id },
-            relations: ['position', 'position.election'],
+            relations: ['position', 'position.election', 'election'],
         });
         if (!candidate) throw new NotFoundException('Candidate not found');
 
-        const position = candidate.position;
-        const election = position.election;
+        const candidateElection = candidate.election;
+        const candidatePosition = candidate.position;
 
-        if (position.id !== dto.position_id || election.id !== dto.election_id) {
+        if (!candidateElection)
+            throw new BadRequestException('Candidate is not tied to any election');
+
+        if (candidate.status !== 'approved') {
+            return {
+                statusCode: 400,
+                message: 'Candidate is not approved and cannot be voted for',
+                data: null,
+            };
+        }
+
+        // check if electionId matches
+        if (dto.election_id !== candidateElection.id) {
             throw new BadRequestException(
-                'Candidate does not belong to the specified position or election',
+                'Candidate does not belong to the specified election',
             );
         }
 
-        const existingVote = await this.voteRepo.findOne({
-            where: {
-                voter: { student_id: dto.voter_id },
-                position: { id: dto.position_id },
-                election: { id: dto.election_id },
-            },
-            relations: ['voter', 'position', 'election'],
+        const election = await this.electRepo.findOne({
+            where: { id: dto.election_id },
+            relations: ['positions'],
         });
 
-        if (existingVote) {
-            throw new BadRequestException(
-                'You have already voted for this position in this election',
-            );
+        // Load full student data for eligibility checks
+        const fullVoter = await this.studentRepo.findOne({
+            where: { student_id: dto.voter_id },
+            relations: ['school', 'department', 'residence'],
+        });
+
+        if (!fullVoter) {
+            throw new NotFoundException('Voter details not found');
+        }
+
+        const fullCandidate = await this.studentRepo.findOne({
+            where: { student_id: candidate.student.student_id },
+            relations: ['school', 'department', 'residence'],
+        });
+
+        if (!fullCandidate) {
+            throw new NotFoundException('Candidate details not found');
+        }
+
+        const positionName = candidatePosition?.name?.toLowerCase() || '';
+
+        if (positionName.includes('senator school')) {
+            if (fullVoter.school?.id !== fullCandidate.school?.id) {
+                throw new BadRequestException('You can only vote for a candidate from your school');
+            }
+        } else if (positionName.includes('senator residence')) {
+            if (fullVoter.residence?.id !== fullCandidate.residence?.id) {
+                throw new BadRequestException('You can only vote for a candidate from your residence');
+            }
+        } else if (positionName.includes('senator international rep')) {
+            if (fullVoter.nationality?.toLowerCase() === 'kenyan') {
+                throw new BadRequestException('Only international students can vote for international rep');
+            }
+        }
+
+        if (!election) throw new NotFoundException('Election not found');
+
+        const isStructured = election.positions?.length > 0;
+
+        // Check vote context based on structured/unstructured
+        if (isStructured) {
+            if (!dto.position_id) {
+                throw new BadRequestException('Position is required for this election');
+            }
+
+            if (!candidatePosition || candidatePosition.id !== dto.position_id) {
+                throw new BadRequestException(
+                    'Candidate does not match the given position in this election',
+                );
+            }
+
+            // check if this voter already voted for this position
+            const existingVote = await this.voteRepo.findOne({
+                where: {
+                    voter: { student_id: dto.voter_id },
+                    election: { id: dto.election_id },
+                    position: { id: dto.position_id },
+                },
+                relations: ['voter', 'election', 'position'],
+            });
+
+            if (existingVote)
+                throw new BadRequestException('You have already voted for this position');
+        } else {
+            // unstructured: vote only based on election
+            if (dto.position_id) {
+                throw new BadRequestException(
+                    'Position must not be provided for elections without positions',
+                );
+            }
+
+            const existingVote = await this.voteRepo.findOne({
+                where: {
+                    voter: { student_id: dto.voter_id },
+                    election: { id: dto.election_id },
+                },
+                relations: ['voter', 'election'],
+            });
+
+            if (existingVote)
+                throw new BadRequestException('You have already voted in this election');
         }
 
         const vote = this.voteRepo.create({
             voter,
             candidate,
-            position,
             election,
+            position: isStructured ? candidatePosition : undefined,
         });
+
         await this.voteRepo.save(vote);
 
         return {
             statusCode: 201,
             message: 'Vote cast successfully',
+            data: {
+                id: vote.id,
+                casted_at: vote.casted_at,
+                voter: {
+                    student_id: vote.voter.student_id,
+                    full_name: `${vote.voter.first_name} ${vote.voter.last_name}`,
+                },
+                candidate: {
+                    id: vote.candidate.id,
+                    full_name: vote.candidate.full_name,
+                    student_id: vote.candidate.student?.student_id,
+                },
+                position: {
+                    id: vote.position.id,
+                    name: vote.position.name,
+                    election: vote.position.election,
+                },
+                election: {
+                    id: vote.election.id,
+                    title: vote.election.title,
+                },
+            } as any,
+        };
+    }
+
+    async castDelegateVote(dto: CreateDelegateVoteDto): Promise<HttpResponseInterface<any>> {
+        const voter = await this.studentRepo.findOne({ where: { student_id: dto.voter_id } });
+        if (!voter) throw new NotFoundException('Voter not found');
+
+        const delegate = await this.delegateRepo.findOne({
+            where: { id: dto.delegate_id },
+            relations: ['student'],
+        });
+        if (!delegate) throw new NotFoundException('Delegate not found');
+        if (delegate.status !== 'approved') {
+            throw new BadRequestException('Delegate is not approved for voting');
+        }
+
+        if (voter.department?.id !== delegate.student?.department?.id) {
+            throw new BadRequestException('You can only vote for a delegate from your department');
+        }
+        const election = await this.electRepo.findOne({
+            where: { id: dto.election_id },
+            relations: ['positions'],
+        });
+        if (!election) throw new NotFoundException('Election not found');
+
+        const isUnstructured = !election.positions || election.positions.length === 0;
+        if (!isUnstructured) {
+            throw new BadRequestException('This election uses structured voting, not for delegates');
+        }
+
+        const existingVote = await this.delegateVoteRepo.findOne({
+            where: {
+                voter: { student_id: dto.voter_id },
+                election: { id: dto.election_id },
+            },
+        });
+
+        if (existingVote) {
+            throw new BadRequestException('You have already voted in this delegate election');
+        }
+
+        const vote = this.delegateVoteRepo.create({ voter, delegate, election });
+        await this.delegateVoteRepo.save(vote);
+
+        return {
+            statusCode: 201,
+            message: 'Vote for delegate cast successfully',
             data: vote,
         };
     }
@@ -134,16 +298,22 @@ export class VotingService {
             data: vote,
         };
     }
-
     /** 5. Get results for a given election & position */
     async getResults(
         electionId: number,
         positionId: number,
-    ): Promise<
-        HttpResponseInterface<
-            Array<{ candidateId: number; full_name: string; voteCount: number }>
-        >
-    > {
+    ): Promise<HttpResponseInterface<ElectionResultsInterface>> {
+        const election = await this.electRepo.findOne({ where: { id: electionId } });
+        const position = await this.posRepo.findOne({ where: { id: positionId } });
+
+        if (!election || !position) {
+            return {
+                statusCode: 404,
+                message: 'Election or Position not found',
+                data: null,
+            };
+        }
+
         const raw = await this.voteRepo
             .createQueryBuilder('vote')
             .select('candidate.id', 'candidateId')
@@ -154,17 +324,58 @@ export class VotingService {
             .andWhere('vote.position = :positionId', { positionId })
             .groupBy('candidate.id')
             .addGroupBy('candidate.full_name')
-            .orderBy('voteCount', 'DESC')
+            .orderBy('"voteCount"', 'DESC')
             .getRawMany();
 
-        return {
-            statusCode: 200,
-            message: `Results for election ${electionId}, position ${positionId}`,
-            data: raw.map((r) => ({
+        const results: ElectionResultsInterface = {
+            election: election.title,
+            position: position.name,
+            results: raw.map((r) => ({
                 candidateId: Number(r.candidateId),
                 full_name: r.full_name,
                 voteCount: Number(r.voteCount),
             })),
         };
+
+        return {
+            statusCode: 200,
+            message: `Results for ${position.name} in ${election.title}`,
+            data: results,
+        };
     }
+
+    async getDelegateResults(electionId: number): Promise<HttpResponseInterface<any>> {
+        const election = await this.electRepo.findOne({ where: { id: electionId } });
+
+        if (!election) {
+            return {
+                statusCode: 404,
+                message: 'Election not found',
+                data: null,
+            };
+        }
+
+        const results = await this.delegateVoteRepo
+            .createQueryBuilder('vote')
+            .select('delegate.id', 'delegateId')
+            .addSelect('delegate.full_name', 'full_name')
+            .addSelect('COUNT(*)', 'voteCount')
+            .innerJoin('vote.delegate', 'delegate')
+            .where('vote.electionId = :electionId', { electionId })
+            .groupBy('delegate.id')
+            .addGroupBy('delegate.full_name')
+            .orderBy('COUNT(*)', 'DESC')
+            .getRawMany();
+
+        return {
+            statusCode: 200,
+            message: `Results for ${election.title}`,
+            data: results.map(r => ({
+                delegateId: Number(r.delegateId),
+                full_name: r.full_name,
+                voteCount: Number(r.voteCount),
+            })),
+        };
+    }
+
 }

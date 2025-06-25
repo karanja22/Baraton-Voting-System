@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ValidateNested, IsArray, IsOptional, IsDateString, IsString, IsBoolean, ArrayNotEmpty } from 'class-validator';
+import { ValidateNested, IsArray, IsOptional, IsDateString, IsString, IsBoolean, ArrayNotEmpty, IsEnum } from 'class-validator';
 
 class CreatePositionInput {
     @IsString()
@@ -22,6 +22,13 @@ export class CreateElectionDto {
     @IsOptional()
     @IsBoolean()
     has_positions?: boolean;
+
+
+    @IsEnum(['SEC', 'DELEGATE', 'GENERAL'], {
+        message: 'Type must be one of: SEC, DELEGATE, GENERAL',
+    })
+    @IsOptional()
+    type: 'SEC' | 'DELEGATE' | 'GENERAL';
 
     @IsOptional()
     @ArrayNotEmpty()

@@ -9,6 +9,8 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VotingModule } from './voting/voting.module';
 import { ResultsModule } from './results/results.module';
+import { AdminModule } from './admin/admin.module';
+import { DelegateSelectionModule } from './delegate-selection/delegate-selection.module';
 
 @Module({
   imports: [AuthModule, UsersModule, ApplicationModule, ElectionsModule,
@@ -23,7 +25,9 @@ import { ResultsModule } from './results/results.module';
       synchronize: true,
     }),
     VotingModule,
-    ResultsModule],
+    ResultsModule,
+    AdminModule,
+    DelegateSelectionModule],
   controllers: [AppController],
   providers: [AppService],
 })

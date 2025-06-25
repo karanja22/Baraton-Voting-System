@@ -9,6 +9,9 @@ import { Student } from 'src/users/entities/student.entity';
 import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
 import { UpdateCandidateDto } from './dto/update-candidtate.dto';
 import { UpdateDelegateDto } from './dto/update-delegate.dto';
+import { Position } from 'src/shared/entities/position.entity';
+import { Election } from 'src/elections/entities/election.entity';
+import { Residence } from 'src/shared/entities/residence.entity';
 
 @Injectable()
 export class ApplicationService {
@@ -21,7 +24,17 @@ export class ApplicationService {
 
     @InjectRepository(Student)
     private studentRepo: Repository<Student>,
+
+    @InjectRepository(Position)
+    private positionRepo: Repository<Position>,
+
+    @InjectRepository(Election)
+    private electionRepo: Repository<Election>,
+
+    @InjectRepository(Residence)
+    private residenceRepo: Repository<Residence>
   ) { }
+
   async submitDelegateApplication(dto: CreateDelegateDto): Promise<HttpResponseInterface<any>> {
     const student = await this.studentRepo.findOne({
       where: { student_id: dto.student_id },
@@ -36,36 +49,50 @@ export class ApplicationService {
       };
     }
 
-    const mismatch =
-      dto.email !== student.email ||
-      dto.school_id !== student.school?.id ||
-      dto.department_id !== student.department?.id ||
-      dto.program_id !== student.program?.id;
+    // ❌ Prevent if already applied as a delegate
+    const existingDelegate = await this.delegateRepo.findOne({
+      where: { student: { student_id: dto.student_id } },
+    });
 
-    if (mismatch) {
+    if (existingDelegate) {
       return {
         statusCode: 400,
-        message: 'Provided data does not match student records',
+        message: 'You have already applied as a delegate.',
         data: null,
       };
     }
 
-    const delegate = this.delegateRepo.create({
-      ...dto,
+    // ❌ Prevent if already applied as a candidate
+    const existingCandidate = await this.candidateRepo.findOne({
+      where: { student: { student_id: dto.student_id } },
+    });
+
+    if (existingCandidate) {
+      return {
+        statusCode: 400,
+        message: 'You cannot apply as a delegate after applying as a candidate.',
+        data: null,
+      };
+    }
+
+    const delegate = this.delegateRepo.create(Object.assign(new DelegateApplication(), {
       full_name: `${student.first_name} ${student.last_name}`,
-      school: student.school?.name,
-      department: student.department?.name,
+      student: student,
+      email: student.email,
+      school: student.school,
+      department: student.department,
       tribe: student.tribe,
       gender: student.gender,
       gpa: student.gpa,
       year_of_study: student.year_of_study,
-      major: student.program?.name,
-      has_disciplinary_issue: false,
+      program: student.program,
+      has_disciplinary_issue: student.hasDisciplinaryIssues,
       credit_hours: student.credit_hours,
       status: 'pending',
-    });
+    }));
 
     await this.delegateRepo.save(delegate);
+
     return {
       statusCode: 201,
       message: 'Delegate application submitted successfully',
@@ -87,10 +114,68 @@ export class ApplicationService {
       };
     }
 
-    let vicePresidentData: Student | null = null;
+    // ❌ Prevent double candidate application
+    const existingCandidate = await this.candidateRepo.findOne({
+      where: { student: { student_id: dto.student_id } },
+    });
 
-    // Handle vice president ID logic
+    if (existingCandidate) {
+      return {
+        statusCode: 400,
+        message: 'You have already applied as a candidate.',
+        data: null,
+      };
+    }
+
+    // ❌ Prevent if already a delegate
+    const existingDelegate = await this.delegateRepo.findOne({
+      where: { student: { student_id: dto.student_id } },
+    });
+
+    if (existingDelegate) {
+      return {
+        statusCode: 400,
+        message: 'You cannot apply as a candidate after applying as a delegate.',
+        data: null,
+      };
+    }
+
+    const position = await this.positionRepo.findOne({
+      where: { id: dto.position_id },
+      relations: ['election'],
+    });
+
+    if (!position) {
+      return {
+        statusCode: 400,
+        message: 'Position not found',
+        data: null,
+      };
+    }
+
+    const election = position.election;
+
+    if (election.id !== dto.election_id) {
+      return {
+        statusCode: 400,
+        message: 'Position does not belong to the specified election',
+        data: null,
+      };
+    }
+
+    // Only president should have VP
+    const isPresidentPosition = position.name.toLowerCase() === 'president';
+
+    let vicePresidentData: Student | null = null;
     if (dto.vice_president_id) {
+      if (!isPresidentPosition) {
+        return {
+          statusCode: 400,
+          message: 'Vice president can only be assigned to the President position',
+          data: null,
+        };
+      }
+
       vicePresidentData = await this.studentRepo.findOne({
         where: { student_id: dto.vice_president_id },
         relations: ['school', 'department', 'program', 'residence'],
@@ -105,24 +190,69 @@ export class ApplicationService {
       }
     }
 
-    const candidate = this.candidateRepo.create({
-      ...dto,
+    // Match senator school with student's school
+    if (position.name.toLowerCase().startsWith('senator school of')) {
+      const schoolNameFromPosition = position.name.replace(/senator school of\s*/i, '').trim().toLowerCase();
+      const schoolNameFromStudent = candidateStudent.school.name.replace(/school of\s*/i, '').trim().toLowerCase();
+
+      if (schoolNameFromPosition !== schoolNameFromStudent) {
+        return {
+          statusCode: 400,
+          message: `Position is for School of ${schoolNameFromPosition}, but student belongs to School of ${schoolNameFromStudent}`,
+          data: null,
+        };
+      }
+    }
+
+    // Check if it's a "Senator Residence -" position
+    if (position.name.toLowerCase().startsWith('senator residence -')) {
+      const residenceNameFromPosition = position.name
+        .replace(/senator residence -\s*/i, '')
+        .trim()
+        .toLowerCase();
+
+      if (!candidateStudent.residence || !candidateStudent.residence.name) {
+        return {
+          statusCode: 400,
+          message: 'Student does not have a residence assigned.',
+          data: null,
+        };
+      }
+
+      const residenceNameFromStudent = candidateStudent.residence.name
+        .replace(/['-]/g, '') // optionally remove dashes/apostrophes
+        .trim()
+        .toLowerCase();
+
+      if (residenceNameFromPosition !== residenceNameFromStudent) {
+        return {
+          statusCode: 400,
+          message: `Position is for "${residenceNameFromPosition}" residence, but student belongs to "${residenceNameFromStudent}" residence.`,
+          data: null,
+        };
+      }
+    }
+
+    const candidate = this.candidateRepo.create(Object.assign(new CandidateApplication(), {
+      student: candidateStudent,
+      full_name: `${candidateStudent.first_name} ${candidateStudent.last_name}`,
       email: candidateStudent.email,
-      school: candidateStudent.school?.name,
-      department: candidateStudent.department?.name,
+      school: candidateStudent.school,
+      department: candidateStudent.department,
+      major: candidateStudent.program,
       tribe: candidateStudent.tribe,
       gender: candidateStudent.gender,
       gpa: candidateStudent.gpa,
       year_of_study: candidateStudent.year_of_study,
-      major: candidateStudent.program?.name,
       nationality: candidateStudent.nationality,
       credit_hours: candidateStudent.credit_hours,
       has_disciplinary_issue: candidateStudent.hasDisciplinaryIssues,
       status: 'pending',
-      vice_president: vicePresidentData || undefined
-    });
-
-    candidate.full_name = `${candidateStudent.first_name} ${candidateStudent.last_name}`;
+      residence: candidateStudent.residence,
+      position,
+      election,
+      vice_president: isPresidentPosition ? vicePresidentData : undefined,
+    }));
 
     await this.candidateRepo.save(candidate);
 
@@ -130,63 +260,66 @@ export class ApplicationService {
       statusCode: 201,
       message: 'Candidate application submitted',
       data: {
-        ...candidate,
-        vice_president_details: vicePresidentData ? {
-          full_name: `${vicePresidentData.first_name} ${vicePresidentData.last_name}`,
-          student_id: vicePresidentData.student_id,
-          school: vicePresidentData.school?.name,
-          department: vicePresidentData.department?.name,
-          program: vicePresidentData.program?.name,
-          gender: vicePresidentData.gender,
-          nationality: vicePresidentData.nationality,
-          gpa: vicePresidentData.gpa,
-          year_of_study: vicePresidentData.year_of_study,
-          credit_hours: vicePresidentData.credit_hours,
-          email: vicePresidentData.email,
-        } : null
-      }
+        id: candidate.id,
+        full_name: candidate.full_name,
+        student_id: candidate.student.student_id,
+        email: candidate.email,
+        school: candidate.school,
+        department: candidate.department,
+        tribe: candidate.tribe,
+        gender: candidate.gender,
+        gpa: candidate.gpa,
+        year_of_study: candidate.year_of_study,
+        major: candidate.program,
+        nationality: candidate.nationality,
+        credit_hours: candidate.credit_hours,
+        has_disciplinary_issue: candidate.has_disciplinary_issue,
+        status: candidate.status,
+        residence: candidate.residence,
+        position_name: position?.name || null,
+        election_id: election?.id || null,
+        created_at: candidate.created_at,
+        vice_president_details: vicePresidentData
+          ? {
+            full_name: `${vicePresidentData.first_name} ${vicePresidentData.last_name}`,
+            student_id: vicePresidentData.student_id,
+            school: vicePresidentData.school?.name,
+            department: vicePresidentData.department?.name,
+            program: vicePresidentData.program?.name,
+            gender: vicePresidentData.gender,
+            nationality: vicePresidentData.nationality,
+            gpa: vicePresidentData.gpa,
+            year_of_study: vicePresidentData.year_of_study,
+            credit_hours: vicePresidentData.credit_hours,
+            email: vicePresidentData.email,
+          }
+          : null,
+      },
     };
   }
 
   async getAllCandidates(): Promise<HttpResponseInterface<any>> {
     const candidates = await this.candidateRepo.find();
-    return {
-      statusCode: 200,
-      message: 'All candidates fetched',
-      data: candidates,
-    };
+    return { statusCode: 200, message: 'All candidates fetched', data: candidates };
   }
 
   async getCandidateById(id: number): Promise<HttpResponseInterface<any>> {
     const candidate = await this.candidateRepo.findOne({ where: { id } });
     if (!candidate) throw new NotFoundException('Candidate not found');
-    return {
-      statusCode: 200,
-      message: 'Candidate found',
-      data: candidate,
-    };
+    return { statusCode: 200, message: 'Candidate found', data: candidate };
   }
 
   async getAllDelegates(): Promise<HttpResponseInterface<any>> {
     const delegates = await this.delegateRepo.find();
-    return {
-      statusCode: 200,
-      message: 'All delegates fetched',
-      data: delegates,
-    };
+    return { statusCode: 200, message: 'All delegates fetched', data: delegates };
   }
 
   async getDelegateById(id: number): Promise<HttpResponseInterface<any>> {
     const delegate = await this.delegateRepo.findOne({ where: { id } });
     if (!delegate) throw new NotFoundException('Delegate not found');
-    return {
-      statusCode: 200,
-      message: 'Delegate found',
-      data: delegate,
-    };
+    return { statusCode: 200, message: 'Delegate found', data: delegate };
   }
 
-  // ========== UPDATE ==========
   async updateCandidate(id: number, dto: UpdateCandidateDto): Promise<HttpResponseInterface<any>> {
     const candidate = await this.candidateRepo.findOne({ where: { id } });
     if (!candidate) throw new NotFoundException('Candidate not found');
@@ -215,17 +348,12 @@ export class ApplicationService {
     };
   }
 
-  // ========== DELETE ==========
   async deleteCandidate(id: number): Promise<HttpResponseInterface<any>> {
     const candidate = await this.candidateRepo.findOne({ where: { id } });
     if (!candidate) throw new NotFoundException('Candidate not found');
 
     await this.candidateRepo.remove(candidate);
-    return {
-      statusCode: 200,
-      message: 'Candidate deleted successfully',
-      data: null,
-    };
+    return { statusCode: 200, message: 'Candidate deleted', data: null };
   }
 
   async deleteDelegate(id: number): Promise<HttpResponseInterface<any>> {
@@ -233,86 +361,6 @@ export class ApplicationService {
     if (!delegate) throw new NotFoundException('Delegate not found');
 
     await this.delegateRepo.remove(delegate);
-    return {
-      statusCode: 200,
-      message: 'Delegate deleted successfully',
-      data: null,
-    };
-  }
-
-  async reviewCandidate(id: number): Promise<HttpResponseInterface<any>> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id },
-      relations: ['position'],
-    });
-
-    if (!candidate) throw new NotFoundException('Candidate application not found');
-
-    const {
-      gpa,
-      credit_hours,
-      position,
-      residence,
-      school,
-      department,
-      nationality,
-      has_disciplinary_issue,
-    } = candidate;
-
-    let approved = true;
-
-    if (has_disciplinary_issue) approved = false;
-    if (gpa < 2.5 || credit_hours < 54 || credit_hours > 100) approved = false;
-
-    const positionName = position?.name?.toLowerCase();
-
-    if (positionName === 'president' || position.isVicePosition) {
-      if (credit_hours < 60) approved = false;
-    }
-
-    if (positionName?.includes('senator residence')) {
-      const validResidences = [
-        "Men's Dorm",
-        "Ladies' Dorm",
-        'Off Campus Male',
-        'Off Campus Female',
-      ];
-      approved &&= validResidences.includes(residence);
-    } else if (positionName?.includes('senator school of')) {
-      approved &&= Boolean(school);
-    } else if (positionName === 'senator religious affairs') {
-      approved &&= department?.toLowerCase().includes('theology');
-    } else if (positionName === 'senator international rep') {
-      approved &&= nationality?.toLowerCase() !== 'kenyan';
-    }
-
-    candidate.status = approved ? 'approved' : 'rejected';
-    await this.candidateRepo.save(candidate);
-
-    return {
-      statusCode: 200,
-      message: `Candidate application ${candidate.status}`,
-      data: candidate,
-    };
-  }
-
-  async reviewDelegate(id: number): Promise<HttpResponseInterface<any>> {
-    const delegate = await this.delegateRepo.findOne({ where: { id } });
-    if (!delegate) throw new NotFoundException('Delegate application not found');
-
-    const approved =
-      delegate.gpa >= 2.5 &&
-      delegate.credit_hours >= 54 &&
-      !delegate.has_disciplinary_issue &&
-      delegate.status === 'pending';
-
-    delegate.status = approved ? 'approved' : 'rejected';
-    await this.delegateRepo.save(delegate);
-
-    return {
-      statusCode: 200,
-      message: `Delegate application ${delegate.status}`,
-      data: delegate,
-    };
+    return { statusCode: 200, message: 'Delegate deleted', data: null };
   }
 }

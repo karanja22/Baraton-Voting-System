@@ -31,6 +31,9 @@ export class Election {
   @OneToMany(() => Position, p => p.election, { cascade: true })
   positions: Position[];
 
+  @Column({ type: 'enum', enum: ['SEC', 'DELEGATE', 'GENERAL'], default: 'GENERAL' })
+  type: 'SEC' | 'DELEGATE' | 'GENERAL';
+
   @CreateDateColumn() created_at: Date;
   @UpdateDateColumn() updated_at: Date;
 }
