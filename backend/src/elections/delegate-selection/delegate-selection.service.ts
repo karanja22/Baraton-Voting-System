@@ -150,10 +150,14 @@ export class DelegateSelectionService {
     }
 
     private async resetSelections(departmentId: number) {
-        await this.delegateRepo.update(
-            { student: { department: { id: departmentId } } },
-            { isSelected: false },
-        );
+        await this.delegateRepo
+            .createQueryBuilder('delegate')
+            .innerJoin('delegate.student', 'student')
+            .innerJoin('student.department', 'department')
+            .update()
+            .set({ isSelected: false })
+            .where('department.id = :id', { id: departmentId })
+            .execute();
     }
 
     private async markAsSelected(delegates: DelegateApplication[]) {

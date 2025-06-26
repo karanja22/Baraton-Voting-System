@@ -45,6 +45,23 @@ export class VotingService {
             where: { id: dto.candidate_id },
             relations: ['position', 'position.election', 'election'],
         });
+
+        // Restrict SEC election to appointed delegates only
+        if (dto.election_id === 2) {
+            const delegate = await this.delegateRepo.findOne({
+                where: {
+                    student: { student_id: dto.voter_id },
+                    status: 'approved',
+                    isSelected: true,
+                },
+                relations: ['student'],
+            });
+
+            if (!delegate) {
+                throw new BadRequestException('Only appointed delegates can vote in the SEC election');
+            }
+        }
+
         if (!candidate) throw new NotFoundException('Candidate not found');
 
         const candidateElection = candidate.election;
