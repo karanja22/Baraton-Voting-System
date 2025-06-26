@@ -29,12 +29,15 @@ export class AuthService {
     ) { }
 
     async register(registerDto: RegisterDto): Promise<HttpResponseInterface<null>> {
+        console.log(this.userRepository.metadata.columns.map(c => c.propertyName));
         const { email, password, identifier, role } = registerDto;
         const finalRole = role || Role.VOTER;
 
         let student: Student | null = null;
 
         if (finalRole === Role.VOTER) {
+            console.log(this.userRepository.metadata.columns.map(c => c.propertyName));
+            console.log(this.userRepository.metadata.columns.map(c => c.propertyName));
             if (!identifier) throw new BadRequestException('Student ID is required for voters');
             student = await this.studentRepository.findOne({
                 where: { student_id: Number(identifier) },
