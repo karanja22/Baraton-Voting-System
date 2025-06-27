@@ -91,4 +91,11 @@ export class Student {
 
   @Column({ default: false })
   hasDisciplinaryIssues: boolean;
+
+  @Column({ nullable: true })
+  cloudinary_public_id?: string;
+
+  @Column({ nullable: true })
+  photo_url?: string;
+
 }

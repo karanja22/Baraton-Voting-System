@@ -25,7 +25,7 @@ export interface ElectionInterface {
     title: string;
     start_date: string;
     end_date: string;
-    status: 'pending' | 'ongoing' | 'completed';
+    status: 'upcoming' | 'open' | 'closed'; // ✅ updated values
     has_positions: boolean;
     positions: PositionInterface[];
     type: 'SEC' | 'DELEGATE' | 'GENERAL';

@@ -22,9 +22,6 @@ export class Election {
   @Column({ type: 'timestamp' })
   end_date: Date;
 
-  @Column({ default: 'pending' })
-  status: string;
-
   @Column({ default: true })
   has_positions: boolean;
 
@@ -36,4 +33,11 @@ export class Election {
 
   @CreateDateColumn() created_at: Date;
   @UpdateDateColumn() updated_at: Date;
+
+  getStatus(): 'upcoming' | 'open' | 'closed' {
+    const now = new Date();
+    if (now < this.start_date) return 'upcoming';
+    if (now > this.end_date) return 'closed';
+    return 'open';
+  }
 }

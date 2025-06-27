@@ -6,7 +6,7 @@ import { CandidateApplication } from 'src/application/entities/candidate-applica
 import { Election } from 'src/elections/entities/election.entity';
 import { Position } from 'src/shared/entities/position.entity';
 import { Student } from 'src/users/entities/student.entity';
-import { Vote } from './entities/voing.entity';
+import { Vote } from './entities/voting.entity';
 import { DelegateVote } from './entities/delegate-voting.entity';
 import { DelegateApplication } from 'src/application/entities/delegate-application.entity';
 

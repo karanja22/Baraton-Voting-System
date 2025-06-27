@@ -1,7 +1,7 @@
 import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { VotingService } from './voting.service';
 import { CreateVoteDto } from './dtos/create-vote.dto';
-import { Vote } from './entities/voing.entity';
+import { Vote } from './entities/voting.entity';
 import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
 import { ElectionResultsInterface } from './interfaces/results.interface';
 import { CreateDelegateVoteDto } from './dtos/create-delegate-vote.dto';

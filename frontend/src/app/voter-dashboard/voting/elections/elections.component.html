@@ -1,1 +1,42 @@
-<p>elections works!</p>
+<div class="container mx-auto p-4">
+  <h1 class="text-3xl font-bold mb-6 text-center">Elections</h1>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="loading" class="text-center text-gray-500">Loading elections...</div>
+
+  <!-- Open Elections -->
+  <div *ngIf="!loading && openElections.length > 0">
+    <h2 class="text-2xl font-semibold mb-4">Open Elections</h2>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div *ngFor="let election of openElections" (click)="goToElection(election.id)"
+        class="cursor-pointer p-4 rounded-lg shadow bg-green-50 hover:bg-green-100 transition">
+        <h3 class="text-lg font-bold">{{ election.title }}</h3>
+        <p class="text-sm text-gray-600">
+          {{ election.start_date | date:'medium' }} - {{ election.end_date | date:'medium' }}
+        </p>
+        <span class="text-sm text-green-700 font-semibold">Open</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Elections -->
+  <div *ngIf="!loading && upcomingElections.length > 0" class="mt-8">
+    <h2 class="text-2xl font-semibold mb-4">Upcoming Elections</h2>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div *ngFor="let election of upcomingElections"
+        class="p-4 rounded-lg shadow bg-blue-50 hover:bg-blue-100 transition">
+        <h3 class="text-lg font-bold">{{ election.title }}</h3>
+        <p class="text-sm text-gray-600">
+          {{ election.start_date | date:'medium' }} - {{ election.end_date | date:'medium' }}
+        </p>
+        <span class="text-sm text-blue-700 font-semibold">Upcoming</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- No Elections -->
+  <div *ngIf="!loading && openElections.length === 0 && upcomingElections.length === 0"
+    class="text-center text-gray-600 mt-8">
+    No elections are available at the moment.
+  </div>
+</div>

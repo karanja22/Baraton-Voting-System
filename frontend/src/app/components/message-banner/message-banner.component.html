@@ -1,1 +1,4 @@
-<p>message-banner works!</p>
+<div *ngIf="show" [ngClass]="bgColor" class="border-l-4 px-4 py-3 rounded relative shadow-sm">
+    <p class="font-medium">{{ message }}</p>
+    <button class="absolute top-2 right-3 text-sm font-bold" (click)="dismiss()">×</button>
+</div>

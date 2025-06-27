@@ -1,5 +1,7 @@
 <main class="max-w-3xl mx-auto px-4 mt-8">
 
+    <app-message-banner *ngIf="message" [message]="message" [type]="messageType"></app-message-banner>
+
     <!-- Status Badge -->
     <div *ngIf="applicationStatus" class="mb-4 px-4 py-2 rounded-lg border text-sm font-semibold shadow-md text-center"
         [ngClass]="{
@@ -49,11 +51,6 @@
             <!-- Row 3: Tribe + GPA + Credit Hours -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tribe</label>
-                    <input type="text" formControlName="tribe"
-                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
-                </div>
-                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">GPA</label>
                     <input type="number" formControlName="gpa"
                         class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
@@ -63,14 +60,15 @@
                     <input type="number" formControlName="credit_hours"
                         class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Year of Study</label>
+                    <input type="number" formControlName="year_of_study"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
             </div>
 
             <!-- Year of Study -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Year of Study</label>
-                <input type="number" formControlName="year_of_study"
-                    class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
-            </div>
+
 
             <!-- School -->
             <div>

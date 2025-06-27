@@ -12,7 +12,7 @@ import { Position } from 'src/shared/entities/position.entity';
 import { Election } from 'src/elections/entities/election.entity';
 import { CreateVoteDto } from './dtos/create-vote.dto';
 import { HttpResponseInterface } from 'src/shared/interfaces/http-response.interface';
-import { Vote } from './entities/voing.entity';
+import { Vote } from './entities/voting.entity';
 import { ElectionResultsInterface } from './interfaces/results.interface';
 import { CreateDelegateVoteDto } from './dtos/create-delegate-vote.dto';
 import { DelegateVote } from './entities/delegate-voting.entity';

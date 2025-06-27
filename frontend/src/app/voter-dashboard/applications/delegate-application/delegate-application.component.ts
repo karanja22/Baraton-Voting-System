@@ -6,11 +6,12 @@ import { UserService } from '../../../services/user.service';
 import { CommonModule } from '@angular/common';
 import { StudentInterface } from '../../../interfaces/student.interface';
 import { CreateDelegateInterface } from '../../../interfaces/create-delegate.interface';
+import { MessageBannerComponent } from '../../../components/message-banner/message-banner.component';
 
 @Component({
   selector: 'app-delegate-application',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, MessageBannerComponent],
   templateUrl: './delegate-application.component.html',
   styleUrl: './delegate-application.component.css',
 })
@@ -23,6 +24,9 @@ export class DelegateApplicationComponent {
   form!: FormGroup;
   loading = false;
   applicationStatus: 'pending' | 'approved' | 'rejected' | null = null;
+  message: string | null = null;
+  messageType: 'success' | 'error' = 'success';
+
 
   constructor() {
     this.initForm();
@@ -99,15 +103,18 @@ export class DelegateApplicationComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          console.log('Application submitted:', res);
+          this.message = res.message; // <-- set message
+          this.messageType = res.statusCode === 201 ? 'success' : 'error';
           this.applicationStatus = 'pending';
           this.loading = false;
         },
         error: (err) => {
-          console.error('Error submitting delegate application:', err);
+          this.message = err?.error?.message || 'Something went wrong';
+          this.messageType = 'error';
           this.loading = false;
         }
       });
+
   }
 
   private getStudentIdFromToken(): number {

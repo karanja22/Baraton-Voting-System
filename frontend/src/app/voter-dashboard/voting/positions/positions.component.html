@@ -1,1 +1,22 @@
-<p>positions works!</p>
+<button (click)="goBack()" class="flex items-center space-x-2 text-blue-600 hover:underline mb-4">
+    <i class="lucide lucide-arrow-left"></i> <!-- Or use heroicons/font-awesome -->
+    <span>Back</span>
+</button>
+
+<div class="container mx-auto p-4">
+    <h2 class="text-2xl font-bold mb-4">Select Position</h2>
+
+    <div *ngIf="loading" class="text-gray-500">Loading positions…</div>
+    <div *ngIf="error" class="text-red-600">{{ error }}</div>
+
+    <ul *ngIf="!loading && positions.length" class="space-y-2">
+        <li *ngFor="let pos of positions" (click)="goToCandidates(pos.id)"
+            class="cursor-pointer p-3 bg-gray-100 rounded hover:bg-gray-200 transition">
+            {{ pos.name }}
+        </li>
+    </ul>
+
+    <div *ngIf="!loading && !positions.length" class="text-gray-600">
+        No positions available.
+    </div>
+</div>

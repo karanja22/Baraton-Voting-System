@@ -3,38 +3,58 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CreateElectionInterface, ElectionInterface, UpdateElectionInterface } from '../interfaces/elections.interface';
+import { HttpResponseInterface } from '../interfaces/http-response.interface';
 
 
 @Injectable({
     providedIn: 'root'
 })
 export class ElectionService {
-    private api = `${environment.apiUrl}/elections`;
+    private baseUrl = `${environment.apiUrl}/elections`;
 
     constructor(private http: HttpClient) { }
 
-    // Create a new election
-    createElection(data: CreateElectionInterface): Observable<ElectionInterface> {
-        return this.http.post<ElectionInterface>(this.api, data);
+    /** Create a new election */
+    createElection(
+        payload: CreateElectionInterface
+    ): Observable<HttpResponseInterface<ElectionInterface>> {
+        return this.http.post<HttpResponseInterface<ElectionInterface>>(
+            this.baseUrl,
+            payload
+        );
     }
 
-    // Get all elections
-    getAllElections(): Observable<ElectionInterface[]> {
-        return this.http.get<ElectionInterface[]>(this.api);
+    /** Fetch all elections */
+    getAllElections(): Observable<HttpResponseInterface<ElectionInterface[]>> {
+        return this.http.get<HttpResponseInterface<ElectionInterface[]>>(
+            this.baseUrl
+        );
     }
 
-    // Get election by ID
-    getElectionById(id: number): Observable<ElectionInterface> {
-        return this.http.get<ElectionInterface>(`${this.api}/${id}`);
+    /** Fetch one election by ID */
+    getElectionById(
+        id: number
+    ): Observable<HttpResponseInterface<ElectionInterface>> {
+        return this.http.get<HttpResponseInterface<ElectionInterface>>(
+            `${this.baseUrl}/${id}`
+        );
     }
 
-    // Update election
-    updateElection(id: number, data: UpdateElectionInterface): Observable<ElectionInterface> {
-        return this.http.patch<ElectionInterface>(`${this.api}/${id}`, data);
+    /** Update an existing election */
+    updateElection(
+        id: number,
+        payload: UpdateElectionInterface
+    ): Observable<HttpResponseInterface<ElectionInterface>> {
+        return this.http.patch<HttpResponseInterface<ElectionInterface>>(
+            `${this.baseUrl}/${id}`,
+            payload
+        );
     }
 
-    // Delete election
-    deleteElection(id: number): Observable<any> {
-        return this.http.delete(`${this.api}/${id}`);
+    /** Delete an election */
+    deleteElection(id: number): Observable<HttpResponseInterface<null>> {
+        return this.http.delete<HttpResponseInterface<null>>(
+            `${this.baseUrl}/${id}`
+        );
     }
 }

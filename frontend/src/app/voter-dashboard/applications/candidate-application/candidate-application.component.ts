@@ -10,11 +10,12 @@ import { ElectionService } from '../../../services/elections.service';
 import { PositionInterface } from '../../../interfaces/position.interface';
 import { CreateCandidateInterface } from '../../../interfaces/create-candiate.interfae';
 import { ElectionInterface } from '../../../interfaces/elections.interface';
+import { MessageBannerComponent } from '../../../components/message-banner/message-banner.component';
 
 @Component({
   selector: 'app-candidate-application',
   standalone: true,
-  imports: [RouterModule, CommonModule, ReactiveFormsModule],
+  imports: [RouterModule, CommonModule, ReactiveFormsModule, MessageBannerComponent],
   templateUrl: './candidate-application.component.html',
   styleUrl: './candidate-application.component.css',
 })
@@ -28,6 +29,9 @@ export class CandidateApplicationComponent {
   form!: FormGroup;
   loading = false;
   applicationStatus: 'pending' | 'approved' | 'rejected' | null = null;
+  message: string | null = null;
+  messageType: 'success' | 'error' = 'success';
+
 
   elections: ElectionInterface[] = [];
   positions: PositionInterface[] = [];
@@ -153,11 +157,16 @@ export class CandidateApplicationComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          console.log('Candidate Application Submitted:', res);
+          this.message = res.message;
+          this.messageType = res.statusCode === 201 ? 'success' : 'error';
           this.applicationStatus = 'pending';
         },
-        error: (err) => console.error('Candidate submission error:', err),
+        error: (err) => {
+          this.message = err?.error?.message || 'Something went wrong';
+          this.messageType = 'error';
+        }
       });
+
   }
 
   private getStudentIdFromToken(): number {

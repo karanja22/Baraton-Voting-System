@@ -65,28 +65,39 @@ export class ElectionsService {
   /**
    * List all elections, including positions if any
    */
-  async findAll(): Promise<HttpResponseInterface<Election[]>> {
+  async findAll(): Promise<HttpResponseInterface<any[]>> {
     const elections = await this.electionRepo.find({ relations: ['positions'] });
+
+    const enriched = elections.map((election) => ({
+      ...election,
+      status: election.getStatus(),
+    }));
+
     return {
       statusCode: 200,
       message: 'All elections fetched',
-      data: elections,
+      data: enriched,
     };
   }
 
   /**
    * Fetch a single election by id
    */
-  async findOne(id: number): Promise<HttpResponseInterface<Election>> {
+  async findOne(id: number): Promise<HttpResponseInterface<any>> {
     const election = await this.electionRepo.findOne({
       where: { id },
       relations: ['positions'],
     });
+
     if (!election) throw new NotFoundException('Election not found');
+
     return {
       statusCode: 200,
       message: 'Election fetched successfully',
-      data: election,
+      data: {
+        ...election,
+        status: election.getStatus(),
+      },
     };
   }
 
