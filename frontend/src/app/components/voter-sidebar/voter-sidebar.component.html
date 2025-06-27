@@ -1,0 +1,74 @@
+<aside class="w-64 bg-primary-dark text-white min-h-screen p-6">
+    <h2 class="text-xl font-bold mb-8 tracking-wide">Voter Panel</h2>
+
+    <nav class="space-y-4 text-white">
+
+        <!-- Dashboard -->
+        <a routerLink="" class="flex items-center space-x-2 hover:text-primary transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6" />
+            </svg>
+            <span>Dashboard</span>
+        </a>
+
+        <!-- Applications -->
+        <details class="group">
+            <summary class="flex items-center space-x-2 cursor-pointer hover:text-primary transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0v-6a2 2 0 00-2-2H7a2 2 0 00-2 2v6" />
+                </svg>
+                <span>Applications</span>
+            </summary>
+            <div class="ml-6 mt-2 space-y-2 text-sm">
+                <a routerLink="apply-delegate" class="flex items-center space-x-2 hover:text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Delegate</span>
+                </a>
+                <a routerLink="apply-candidate" class="flex items-center space-x-2 hover:text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Candidate</span>
+                </a>
+            </div>
+        </details>
+
+        <!-- Voting -->
+        <a routerLink="voting" class="flex items-center space-x-2 hover:text-primary transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Voting</span>
+        </a>
+
+        <!-- Results -->
+        <a routerLink="results" class="flex items-center space-x-2 hover:text-primary transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 11V7a4 4 0 118 0v4m-4 4v4m-6-4v4M5 13v4" />
+            </svg>
+            <span>Results</span>
+        </a>
+
+        <!-- Logout -->
+        <a (click)="onLogout()" class="flex items-center space-x-2 hover:text-primary transition cursor-pointer mt-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 11-4 0v-1m0-4V9a2 2 0 114 0v1" />
+            </svg>
+            <span>Logout</span>
+        </a>
+
+    </nav>
+</aside>

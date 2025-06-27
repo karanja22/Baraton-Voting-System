@@ -1,0 +1,125 @@
+<main class="max-w-3xl mx-auto px-4 mt-10">
+    <!-- Status Badge -->
+    <div *ngIf="applicationStatus" class="mb-4 px-4 py-2 rounded-lg border text-sm font-semibold shadow-md text-center"
+        [ngClass]="{
+      'text-yellow-700 bg-yellow-50 border-yellow-300': applicationStatus === 'pending',
+      'text-green-700 bg-green-50 border-green-300': applicationStatus === 'approved',
+      'text-red-700 bg-red-50 border-red-300': applicationStatus === 'rejected'
+    }">
+        Status: {{ applicationStatus | titlecase }}
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
+        <h2 class="text-2xl font-bold text-primary mb-6 text-center">Candidate Application</h2>
+
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+            <!-- Student Info (Autofilled & Disabled) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Student ID</label>
+                    <input type="text" formControlName="student_id"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" formControlName="full_name"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" formControlName="email"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                    <input type="text" formControlName="gender"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tribe</label>
+                    <input type="text" formControlName="tribe"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">GPA</label>
+                    <input type="number" formControlName="gpa"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Credit Hours</label>
+                    <input type="number" formControlName="credit_hours"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Year of Study</label>
+                    <input type="number" formControlName="year_of_study"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">School</label>
+                    <input type="text" formControlName="school"
+                        class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <input type="text" formControlName="department"
+                    class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Program</label>
+                <input type="text" formControlName="program"
+                    class="w-full border rounded-lg px-4 py-2 bg-gray-100 text-gray-800" />
+            </div>
+
+            <!-- Editable Fields -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
+                    <input type="text" formControlName="nationality" class="w-full border rounded-lg px-4 py-2" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Election</label>
+                    <select formControlName="election_id" class="w-full border rounded-lg px-4 py-2">
+                        <option value="" disabled>Select Election</option>
+                        <option *ngFor="let election of elections" [value]="election.id">{{ election.title }}</option>
+                    </select>
+                </div>
+            </div>
+
+            <div *ngIf="positions.length">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                <select formControlName="position_id" class="w-full border rounded-lg px-4 py-2">
+                    <option value="" disabled>Select Position</option>
+                    <option *ngFor="let position of positions" [value]="position.id">{{ position.name }}</option>
+                </select>
+            </div>
+
+            <!-- VP ID (Only if President is selected) -->
+            <div *ngIf="form.get('vice_president_id')?.enabled">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Vice President Student ID</label>
+                <input type="text" formControlName="vice_president_id" class="w-full border rounded-lg px-4 py-2" />
+            </div>
+
+            <!-- Submit Button -->
+            <div class="text-center mt-6" *ngIf="!applicationStatus">
+                <button type="submit" [disabled]="loading"
+                    class="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
+                    {{ loading ? 'Submitting...' : 'Submit Candidate Application' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</main>

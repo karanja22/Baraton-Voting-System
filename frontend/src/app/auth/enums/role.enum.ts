@@ -1,0 +1,5 @@
+export enum Role {
+    VOTER = 'VOTER',
+    ADMIN = 'ADMIN',
+    ELECTORAL_COMMISSION = 'ELECTORAL_COMMISSION'
+}

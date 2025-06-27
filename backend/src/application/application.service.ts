@@ -49,7 +49,7 @@ export class ApplicationService {
       };
     }
 
-    // ❌ Prevent if already applied as a delegate
+    // Prevent if already applied as a delegate
     const existingDelegate = await this.delegateRepo.findOne({
       where: { student: { student_id: dto.student_id } },
     });
@@ -62,7 +62,7 @@ export class ApplicationService {
       };
     }
 
-    // ❌ Prevent if already applied as a candidate
+    // Prevent if already applied as a candidate
     const existingCandidate = await this.candidateRepo.findOne({
       where: { student: { student_id: dto.student_id } },
     });
@@ -114,7 +114,7 @@ export class ApplicationService {
       };
     }
 
-    // ❌ Prevent double candidate application
+    // Prevent double candidate application
     const existingCandidate = await this.candidateRepo.findOne({
       where: { student: { student_id: dto.student_id } },
     });
@@ -127,7 +127,7 @@ export class ApplicationService {
       };
     }
 
-    // ❌ Prevent if already a delegate
+    // Prevent if already a delegate
     const existingDelegate = await this.delegateRepo.findOne({
       where: { student: { student_id: dto.student_id } },
     });
