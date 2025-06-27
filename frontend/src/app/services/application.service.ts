@@ -37,6 +37,9 @@ export class ApplicationService {
   submitCandidate(data: any): Observable<any> {
     return this.http.post(`${this.api}${this.endpoints.candidate.create}`, data);
   }
+  submitCandidateWithImage(formData: FormData) {
+    return this.http.post(`${this.api}/application/candidate/upload`, formData);
+  }
 
   getAllCandidates(): Observable<any> {
     return this.http.get(`${this.api}${this.endpoints.candidate.getAll}`);

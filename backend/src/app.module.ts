@@ -13,6 +13,7 @@ import { AdminModule } from './admin/admin.module';
 import { DelegateSelectionModule } from './elections/delegate-selection/delegate-selection.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [AuthModule, UsersModule, ApplicationModule, ElectionsModule,
@@ -34,7 +35,8 @@ import { JwtModule } from '@nestjs/jwt';
     VotingModule,
     ResultsModule,
     AdminModule,
-    DelegateSelectionModule],
+    DelegateSelectionModule,
+    MediaModule],
   controllers: [AppController],
   providers: [AppService],
 })

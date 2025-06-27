@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApplicationService } from '../../../services/application.service';
 import { UserService } from '../../../services/user.service';
+import { MediaService } from '../../../services/media.service';
 import { CommonModule } from '@angular/common';
 import { StudentInterface } from '../../../interfaces/student.interface';
 import { CreateDelegateInterface } from '../../../interfaces/create-delegate.interface';
@@ -20,6 +21,7 @@ export class DelegateApplicationComponent {
   private destroyRef = inject(DestroyRef);
   private appService = inject(ApplicationService);
   private userService = inject(UserService);
+  private mediaService = inject(MediaService);
 
   form!: FormGroup;
   loading = false;
@@ -27,6 +29,7 @@ export class DelegateApplicationComponent {
   message: string | null = null;
   messageType: 'success' | 'error' = 'success';
 
+  selectedFile: File | null = null;
 
   constructor() {
     this.initForm();
@@ -73,16 +76,15 @@ export class DelegateApplicationComponent {
             program: data.program?.name,
           });
 
-          // Check if user already applied as delegate
           this.appService.getDelegateById(studentId)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (res) => {
-                this.applicationStatus = res?.status || 'pending'; // fallback to pending if status missing
+                this.applicationStatus = res?.status || 'pending';
               },
               error: (err) => {
                 if (err.status === 404) {
-                  this.applicationStatus = null; // Not applied yet
+                  this.applicationStatus = null;
                 } else {
                   console.error('Failed to fetch delegate application:', err);
                 }
@@ -93,28 +95,47 @@ export class DelegateApplicationComponent {
       });
   }
 
-  onSubmit() {
-    const student_id = this.form.getRawValue().student_id;
-    const payload: CreateDelegateInterface = { student_id };
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    this.selectedFile = input.files[0];
+  }
 
+  private async uploadImage(studentId: number): Promise<string> {
+    if (!this.selectedFile) return '';
+    const result = await this.mediaService.uploadImage(this.selectedFile, studentId).toPromise();
+    return result?.photo_url || '';
+  }
+
+  async onSubmit() {
+    const student_id = this.form.getRawValue().student_id;
     this.loading = true;
 
-    this.appService.submitDelegate(payload)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (res) => {
-          this.message = res.message; // <-- set message
-          this.messageType = res.statusCode === 201 ? 'success' : 'error';
-          this.applicationStatus = 'pending';
-          this.loading = false;
-        },
-        error: (err) => {
-          this.message = err?.error?.message || 'Something went wrong';
-          this.messageType = 'error';
-          this.loading = false;
-        }
-      });
+    try {
+      const photoUrl = await this.uploadImage(student_id);
+      const payload: CreateDelegateInterface = { student_id, photo_url: photoUrl };
 
+      this.appService.submitDelegate(payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.message = res.message;
+            this.messageType = res.statusCode === 201 ? 'success' : 'error';
+            this.applicationStatus = 'pending';
+            this.loading = false;
+          },
+          error: (err) => {
+            this.message = err?.error?.message || 'Something went wrong';
+            this.messageType = 'error';
+            this.loading = false;
+          }
+        });
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      this.message = 'Image upload failed';
+      this.messageType = 'error';
+      this.loading = false;
+    }
   }
 
   private getStudentIdFromToken(): number {

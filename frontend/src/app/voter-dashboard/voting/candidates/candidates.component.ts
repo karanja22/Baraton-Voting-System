@@ -109,7 +109,6 @@ export class CandidatesComponent implements OnInit {
     this.router.navigate([`/voter/voting/${this.electionId}/positions`]);
   }
 
-
   dismissNotification() {
     this.notification = null;
   }

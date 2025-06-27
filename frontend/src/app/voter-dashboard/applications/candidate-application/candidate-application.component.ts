@@ -1,21 +1,27 @@
 import { Component, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  FormControl,
+  Validators,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { StudentInterface } from '../../../interfaces/student.interface';
 import { ApplicationService } from '../../../services/application.service';
 import { UserService } from '../../../services/user.service';
 import { ElectionService } from '../../../services/elections.service';
+import { StudentInterface } from '../../../interfaces/student.interface';
+import { ElectionInterface } from '../../../interfaces/elections.interface';
 import { PositionInterface } from '../../../interfaces/position.interface';
 import { CreateCandidateInterface } from '../../../interfaces/create-candiate.interfae';
-import { ElectionInterface } from '../../../interfaces/elections.interface';
 import { MessageBannerComponent } from '../../../components/message-banner/message-banner.component';
 
 @Component({
   selector: 'app-candidate-application',
   standalone: true,
-  imports: [RouterModule, CommonModule, ReactiveFormsModule, MessageBannerComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, MessageBannerComponent],
   templateUrl: './candidate-application.component.html',
   styleUrl: './candidate-application.component.css',
 })
@@ -27,18 +33,18 @@ export class CandidateApplicationComponent {
   private electionService = inject(ElectionService);
 
   form!: FormGroup;
-  loading = false;
-  applicationStatus: 'pending' | 'approved' | 'rejected' | null = null;
-  message: string | null = null;
-  messageType: 'success' | 'error' = 'success';
-
-
   elections: ElectionInterface[] = [];
   positions: PositionInterface[] = [];
 
+  applicationStatus: 'pending' | 'approved' | 'rejected' | null = null;
+  message: string | null = null;
+  messageType: 'success' | 'error' = 'success';
+  imageFile: File | null = null;
+  loading = false;
+
   ngOnInit() {
     this.initForm();
-    this.fetchUserData();
+    this.fetchStudentData();
     this.fetchDropdowns();
   }
 
@@ -59,11 +65,12 @@ export class CandidateApplicationComponent {
       election_id: new FormControl('', Validators.required),
       position_id: new FormControl('', Validators.required),
       vice_president_id: new FormControl({ value: '', disabled: true }),
+      photo: new FormControl(null),
     });
 
     this.form.get('election_id')?.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((electionId) => {
+      .subscribe(electionId => {
         const selected = this.elections.find(e => e.id === +electionId);
         this.positions = selected?.positions || [];
         this.form.get('position_id')?.reset();
@@ -71,9 +78,9 @@ export class CandidateApplicationComponent {
 
     this.form.get('position_id')?.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((positionId) => {
-        const selectedPosition = this.positions.find(p => p.id === +positionId);
-        const isPresident = selectedPosition?.name?.toLowerCase() === 'president';
+      .subscribe(positionId => {
+        const selected = this.positions.find(p => p.id === +positionId);
+        const isPresident = selected?.name?.toLowerCase() === 'president';
         const vpControl = this.form.get('vice_president_id');
 
         if (isPresident) {
@@ -89,30 +96,45 @@ export class CandidateApplicationComponent {
       });
   }
 
-  private fetchUserData() {
+  private fetchStudentData() {
     const studentId = this.getStudentIdFromToken();
     if (!studentId) return;
 
     this.userService.getStudentById(studentId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (res) => {
-          const data: StudentInterface = res.data;
+        next: res => {
+          const student: StudentInterface = res.data;
           this.form.patchValue({
-            student_id: data.student_id,
-            full_name: `${data.first_name} ${data.last_name}`,
-            email: data.email,
-            gender: data.gender,
-            tribe: data.tribe,
-            gpa: data.gpa,
-            credit_hours: data.credit_hours,
-            year_of_study: data.year_of_study,
-            school: data.school?.name,
-            department: data.department?.name,
-            program: data.program?.name,
+            student_id: student.student_id,
+            full_name: `${student.first_name} ${student.last_name}`,
+            email: student.email,
+            gender: student.gender,
+            tribe: student.tribe,
+            gpa: student.gpa,
+            credit_hours: student.credit_hours,
+            year_of_study: student.year_of_study,
+            school: student.school?.name,
+            department: student.department?.name,
+            program: student.program?.name,
           });
+
+          this.appService.getCandidateById(studentId)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: res => {
+                this.applicationStatus = res?.status || 'pending';
+              },
+              error: err => {
+                if (err.status === 404) {
+                  this.applicationStatus = null;
+                } else {
+                  console.error('Error fetching candidate application:', err);
+                }
+              }
+            });
         },
-        error: (err) => console.error('Failed to fetch student data:', err),
+        error: err => console.error('Error fetching student:', err)
       });
   }
 
@@ -120,31 +142,26 @@ export class CandidateApplicationComponent {
     this.electionService.getAllElections()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (res: any) => {
-          this.elections = Array.isArray(res) ? res : (res?.data ?? []);
+        next: res => {
+          this.elections = Array.isArray(res) ? res : res?.data || [];
         },
-        error: (err) => console.error('Failed to load elections:', err)
-      });
-
-    // Watch for election change
-    this.form.get('election_id')?.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((electionId) => {
-        this.loadPositionsForElection(electionId);
+        error: err => console.error('Failed to fetch elections:', err)
       });
   }
 
-  private loadPositionsForElection(electionId: number) {
-    const selected = this.elections.find(e => e.id === +electionId);
-    this.positions = selected?.positions || [];
+  onImageChange(event: Event) {
+    const file = (event.target as HTMLInputElement)?.files?.[0];
+    this.imageFile = file || null;
   }
-
 
   onSubmit() {
     if (this.form.invalid) return;
 
+    const formData = new FormData();
+    const studentId = this.form.getRawValue().student_id;
+
     const payload: CreateCandidateInterface = {
-      student_id: this.form.getRawValue().student_id,
+      student_id: studentId,
       election_id: +this.form.get('election_id')?.value,
       position_id: +this.form.get('position_id')?.value,
       nationality: this.form.get('nationality')?.value,
@@ -153,20 +170,26 @@ export class CandidateApplicationComponent {
         : undefined,
     };
 
-    this.appService.submitCandidate(payload)
+    formData.append('payload', JSON.stringify(payload));
+    if (this.imageFile) formData.append('photo', this.imageFile);
+
+    this.loading = true;
+
+    this.appService.submitCandidate(formData)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (res) => {
+        next: res => {
           this.message = res.message;
           this.messageType = res.statusCode === 201 ? 'success' : 'error';
           this.applicationStatus = 'pending';
+          this.loading = false;
         },
-        error: (err) => {
+        error: err => {
           this.message = err?.error?.message || 'Something went wrong';
           this.messageType = 'error';
+          this.loading = false;
         }
       });
-
   }
 
   private getStudentIdFromToken(): number {
@@ -174,9 +197,9 @@ export class CandidateApplicationComponent {
     if (!token) return 0;
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      return parseInt(payload.identifier);
+      return parseInt(payload.identifier, 10);
     } catch (e) {
-      console.warn('Invalid token:', e);
+      console.warn('Invalid token payload:', e);
       return 0;
     }
   }
