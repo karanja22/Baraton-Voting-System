@@ -13,9 +13,22 @@ export class ApplicationService {
   constructor(private http: HttpClient) { }
 
   // === Delegate ===
-  submitDelegate(data: any): Observable<any> {
-    return this.http.post(`${this.api}${this.endpoints.delegate.create}`, data);
+  submitDelegate(data: any, file?: File): Observable<any> {
+    const formData = new FormData();
+
+    if (file) {
+      formData.append('file', file);
+    }
+
+    for (const key in data) {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    }
+
+    return this.http.post(`${this.api}${this.endpoints.delegate.create}`, formData);
   }
+
 
   getAllDelegates(): Observable<any> {
     return this.http.get(`${this.api}${this.endpoints.delegate.getAll}`);
@@ -34,11 +47,22 @@ export class ApplicationService {
   }
 
   // === Candidate ===
-  submitCandidate(data: any): Observable<any> {
-    return this.http.post(`${this.api}${this.endpoints.candidate.create}`, data);
-  }
-  submitCandidateWithImage(formData: FormData) {
-    return this.http.post(`${this.api}/application/candidate/upload`, formData);
+  submitCandidate(data: any, file?: File): Observable<any> {
+    const formData = new FormData();
+
+    // Append file only if it exists
+    if (file) {
+      formData.append('file', file);
+    }
+
+    // Append all candidate fields to FormData
+    for (const key in data) {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    }
+
+    return this.http.post(`${this.api}${this.endpoints.candidate.create}`, formData);
   }
 
   getAllCandidates(): Observable<any> {

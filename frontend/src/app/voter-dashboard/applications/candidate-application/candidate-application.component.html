@@ -17,6 +17,26 @@
         <h2 class="text-2xl font-bold text-primary mb-6 text-center">Candidate Application</h2>
 
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+            <div class="w-full flex flex-col items-center">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Upload Your Photo</label>
+
+                <div
+                    class="relative w-40 h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden">
+                    <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer"
+                        (change)="onImageChange($event)" />
+                    <ng-container *ngIf="imagePreview; else placeholder">
+                        <img [src]="imagePreview" alt="Preview" class="w-full h-full object-cover rounded-lg" />
+                    </ng-container>
+                    <ng-template #placeholder>
+                        <span class="text-gray-400 text-sm">Click to Upload</span>
+                    </ng-template>
+                </div>
+
+                <p *ngIf="imageFile" class="mt-2 text-sm text-gray-600">
+                    Selected: {{ imageFile.name }}
+                </p>
+            </div>
+
             <!-- Student Info (Autofilled & Disabled) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -89,21 +109,23 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
                     <input type="text" formControlName="nationality" class="w-full border rounded-lg px-4 py-2" />
                 </div>
+                <!-- Election -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Election</label>
-                    <select formControlName="election_id" class="w-full border rounded-lg px-4 py-2">
-                        <option value="" disabled>Select Election</option>
-                        <option *ngFor="let election of elections" [value]="election.id">{{ election.title }}</option>
+                    <select formControlName="election_id" class="w-full border rounded-lg px-4 py-2" required>
+                        <option [ngValue]="null" disabled>Select Election</option>
+                        <option *ngFor="let election of elections" [ngValue]="election.id">{{ election.title }}</option>
                     </select>
                 </div>
-            </div>
 
-            <div *ngIf="positions.length">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                <select formControlName="position_id" class="w-full border rounded-lg px-4 py-2">
-                    <option value="" disabled>Select Position</option>
-                    <option *ngFor="let position of positions" [value]="position.id">{{ position.name }}</option>
-                </select>
+                <!-- Position -->
+                <div *ngIf="positions.length">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                    <select formControlName="position_id" class="w-full border rounded-lg px-4 py-2" required>
+                        <option [ngValue]="null" disabled>Select Position</option>
+                        <option *ngFor="let position of positions" [ngValue]="position.id">{{ position.name }}</option>
+                    </select>
+                </div>
             </div>
 
             <!-- VP ID (Only if President is selected) -->

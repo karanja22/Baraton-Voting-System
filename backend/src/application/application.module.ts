@@ -8,9 +8,10 @@ import { CandidateApplication } from './entities/candidate-application.entity';
 import { Position } from 'src/shared/entities/position.entity';
 import { Election } from 'src/elections/entities/election.entity';
 import { Residence } from 'src/shared/entities/residence.entity';
+import { MediaModule } from 'src/media/media.module';
 
 @Module({
-  imports: [
+  imports: [MediaModule,
     TypeOrmModule.forFeature([
       Student,
       CandidateApplication,
@@ -18,6 +19,7 @@ import { Residence } from 'src/shared/entities/residence.entity';
       Position,
       Election,
       Residence,
+
     ]),
   ],
   controllers: [ApplicationController],

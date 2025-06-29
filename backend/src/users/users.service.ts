@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from './entities/student.entity';
@@ -9,6 +13,7 @@ import { Program } from 'src/shared/entities/program.entity';
 import { Department } from 'src/shared/entities/department.entity';
 import { Residence } from 'src/shared/entities/residence.entity';
 import { School } from 'src/shared/entities/school.entity';
+import { MediaService } from 'src/media/media.service';
 
 @Injectable()
 export class UsersService {
@@ -23,9 +28,13 @@ export class UsersService {
     private readonly schoolRepo: Repository<School>,
     @InjectRepository(Residence)
     private readonly residenceRepo: Repository<Residence>,
+    private readonly mediaService: MediaService,
   ) { }
 
-  async createStudent(dto: CreateStudentDto): Promise<HttpResponseInterface<Student>> {
+  async createStudent(
+    dto: CreateStudentDto,
+    file?: Express.Multer.File,
+  ): Promise<HttpResponseInterface<Student>> {
     const program = await this.programRepo.findOne({ where: { id: dto.program_id } });
     const department = await this.deptRepo.findOne({ where: { id: dto.department_id } });
     const school = await this.schoolRepo.findOne({ where: { id: dto.school_id } });
@@ -36,6 +45,7 @@ export class UsersService {
     if (!program || !department || !school) {
       throw new NotFoundException('One or more related entities (program, department, school) not found');
     }
+
     const maleResidences = ["Men's Dorm", 'Off Campus Male'];
     const femaleResidences = ['Ladies\' Dorm', 'Off Campus Female'];
     const gender = dto.gender?.toLowerCase();
@@ -55,6 +65,12 @@ export class UsersService {
       school,
       residence,
     });
+
+    if (file) {
+      const result = await this.mediaService.uploadStudentImage(file, dto.student_id);
+      student.photo_url = result.photo_url;
+      student.cloudinary_public_id = result.public_id;
+    }
 
     await this.studentRepo.save(student);
 
@@ -92,7 +108,10 @@ export class UsersService {
     };
   }
 
-  async updateStudent(id: number, dto: UpdateStudentDto): Promise<HttpResponseInterface<Student>> {
+  async updateStudent(
+    id: number,
+    dto: UpdateStudentDto,
+  ): Promise<HttpResponseInterface<Student>> {
     const student = await this.studentRepo.findOne({ where: { student_id: id } });
     if (!student) throw new NotFoundException('Student not found');
 
@@ -142,7 +161,6 @@ export class UsersService {
       data: student,
     };
   }
-
 
   async deleteStudent(id: number): Promise<HttpResponseInterface<null>> {
     const result = await this.studentRepo.delete({ student_id: id });

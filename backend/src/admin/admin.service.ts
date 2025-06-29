@@ -32,8 +32,7 @@ export class AdminService {
             credit_hours,
             position,
             residence,
-            school,
-            department,
+            school, department,
             nationality,
             has_disciplinary_issue,
         } = candidate;

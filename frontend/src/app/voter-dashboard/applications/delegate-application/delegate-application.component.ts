@@ -3,7 +3,6 @@ import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApplicationService } from '../../../services/application.service';
 import { UserService } from '../../../services/user.service';
-import { MediaService } from '../../../services/media.service';
 import { CommonModule } from '@angular/common';
 import { StudentInterface } from '../../../interfaces/student.interface';
 import { CreateDelegateInterface } from '../../../interfaces/create-delegate.interface';
@@ -21,15 +20,13 @@ export class DelegateApplicationComponent {
   private destroyRef = inject(DestroyRef);
   private appService = inject(ApplicationService);
   private userService = inject(UserService);
-  private mediaService = inject(MediaService);
 
   form!: FormGroup;
   loading = false;
   applicationStatus: 'pending' | 'approved' | 'rejected' | null = null;
   message: string | null = null;
   messageType: 'success' | 'error' = 'success';
-
-  selectedFile: File | null = null;
+  imageFile: File | null = null;
 
   constructor() {
     this.initForm();
@@ -80,7 +77,7 @@ export class DelegateApplicationComponent {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (res) => {
-                this.applicationStatus = res?.status || 'pending';
+                this.applicationStatus = res?.status ?? null;
               },
               error: (err) => {
                 if (err.status === 404) {
@@ -95,59 +92,64 @@ export class DelegateApplicationComponent {
       });
   }
 
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length) return;
-    this.selectedFile = input.files[0];
-  }
+  onSubmit() {
+    if (!this.form.valid) return;
 
-  private async uploadImage(studentId: number): Promise<string> {
-    if (!this.selectedFile) return '';
-    const result = await this.mediaService.uploadImage(this.selectedFile, studentId).toPromise();
-    return result?.photo_url || '';
-  }
+    const formData = new FormData();
+    const studentId = this.form.getRawValue().student_id;
 
-  async onSubmit() {
-    const student_id = this.form.getRawValue().student_id;
+    const payload: CreateDelegateInterface = {
+      student_id: studentId,
+      photo_url: '' // Provide an appropriate value or update logic to set the actual photo URL if available
+    };
+
+    formData.append('payload', JSON.stringify(payload));
+    if (this.imageFile) formData.append('file', this.imageFile);
+
     this.loading = true;
 
-    try {
-      const photoUrl = await this.uploadImage(student_id);
-      const payload: CreateDelegateInterface = { student_id, photo_url: photoUrl };
-
-      this.appService.submitDelegate(payload)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (res) => {
-            this.message = res.message;
-            this.messageType = res.statusCode === 201 ? 'success' : 'error';
-            this.applicationStatus = 'pending';
-            this.loading = false;
-          },
-          error: (err) => {
-            this.message = err?.error?.message || 'Something went wrong';
-            this.messageType = 'error';
-            this.loading = false;
-          }
-        });
-    } catch (err) {
-      console.error('Image upload failed:', err);
-      this.message = 'Image upload failed';
-      this.messageType = 'error';
-      this.loading = false;
-    }
+    this.appService.submitDelegate(formData)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: res => {
+          this.message = res.message;
+          this.messageType = res.statusCode === 201 ? 'success' : 'error';
+          this.applicationStatus = 'pending';
+          this.loading = false;
+        },
+        error: err => {
+          this.message = err?.error?.message || 'Something went wrong';
+          this.messageType = 'error';
+          this.loading = false;
+        }
+      });
   }
 
   private getStudentIdFromToken(): number {
     const token = localStorage.getItem('accessToken');
     if (!token) return 0;
-
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      return parseInt(payload.identifier);
+      return parseInt(payload.identifier, 10);
     } catch (e) {
-      console.warn('Invalid token:', e);
+      console.warn('Invalid token payload:', e);
       return 0;
     }
   }
+  imagePreview: string | null = null;
+
+  onImageChange(event: Event) {
+    const file = (event.target as HTMLInputElement)?.files?.[0];
+    this.imageFile = file || null;
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => this.imagePreview = reader.result as string;
+      reader.readAsDataURL(file);
+    } else {
+      this.imagePreview = null;
+    }
+  }
+
+
 }

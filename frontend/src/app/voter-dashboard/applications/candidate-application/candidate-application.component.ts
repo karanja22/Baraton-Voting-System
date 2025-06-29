@@ -35,11 +35,12 @@ export class CandidateApplicationComponent {
   form!: FormGroup;
   elections: ElectionInterface[] = [];
   positions: PositionInterface[] = [];
-
   applicationStatus: 'pending' | 'approved' | 'rejected' | null = null;
   message: string | null = null;
   messageType: 'success' | 'error' = 'success';
   imageFile: File | null = null;
+
+  imagePreview: string | null = null;
   loading = false;
 
   ngOnInit() {
@@ -62,10 +63,9 @@ export class CandidateApplicationComponent {
       department: new FormControl({ value: '', disabled: true }),
       program: new FormControl({ value: '', disabled: true }),
       nationality: new FormControl('', Validators.required),
-      election_id: new FormControl('', Validators.required),
-      position_id: new FormControl('', Validators.required),
+      election_id: new FormControl(null, Validators.required),
+      position_id: new FormControl(null, Validators.required),
       vice_president_id: new FormControl({ value: '', disabled: true }),
-      photo: new FormControl(null),
     });
 
     this.form.get('election_id')?.valueChanges
@@ -73,7 +73,7 @@ export class CandidateApplicationComponent {
       .subscribe(electionId => {
         const selected = this.elections.find(e => e.id === +electionId);
         this.positions = selected?.positions || [];
-        this.form.get('position_id')?.reset();
+        this.form.get('position_id')?.reset(null);
       });
 
     this.form.get('position_id')?.valueChanges
@@ -123,7 +123,7 @@ export class CandidateApplicationComponent {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: res => {
-                this.applicationStatus = res?.status || 'pending';
+                this.applicationStatus = res?.status ?? null;
               },
               error: err => {
                 if (err.status === 404) {
@@ -152,26 +152,46 @@ export class CandidateApplicationComponent {
   onImageChange(event: Event) {
     const file = (event.target as HTMLInputElement)?.files?.[0];
     this.imageFile = file || null;
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => this.imagePreview = reader.result as string;
+      reader.readAsDataURL(file);
+    } else {
+      this.imagePreview = null;
+    }
   }
 
   onSubmit() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.message = 'Please fill in all required fields.';
+      this.messageType = 'error';
+      return;
+    }
 
-    const formData = new FormData();
+    const electionId = Number(this.form.get('election_id')?.value);
+    const positionId = Number(this.form.get('position_id')?.value);
+
+    if (!electionId || !positionId) {
+      this.message = 'Please select both Election and Position.';
+      this.messageType = 'error';
+      return;
+    }
+
     const studentId = this.form.getRawValue().student_id;
-
     const payload: CreateCandidateInterface = {
       student_id: studentId,
-      election_id: +this.form.get('election_id')?.value,
-      position_id: +this.form.get('position_id')?.value,
+      election_id: electionId,
+      position_id: positionId,
       nationality: this.form.get('nationality')?.value,
       vice_president_id: this.form.get('vice_president_id')?.enabled
-        ? +this.form.get('vice_president_id')?.value
+        ? Number(this.form.get('vice_president_id')?.value)
         : undefined,
     };
 
+    const formData = new FormData();
     formData.append('payload', JSON.stringify(payload));
-    if (this.imageFile) formData.append('photo', this.imageFile);
+    if (this.imageFile) formData.append('file', this.imageFile);
 
     this.loading = true;
 

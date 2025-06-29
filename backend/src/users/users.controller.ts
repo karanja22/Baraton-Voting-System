@@ -7,21 +7,28 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  UploadedFile,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateStudentDto } from './dtos/create-student.dto';
 import { UpdateStudentDto } from './dtos/update-student.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
+  @UseInterceptors(FileInterceptor('photo')) // Expecting field name `photo` in the form
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-  create(@Body() dto: CreateStudentDto) {
-    return this.usersService.createStudent(dto);
+  create(
+    @Body() dto: CreateStudentDto,
+    @UploadedFile() file?: Express.Multer.File
+  ) {
+    return this.usersService.createStudent(dto, file);
   }
 
   @Get()
